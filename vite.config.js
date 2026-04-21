@@ -7,13 +7,13 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://menu-card-711863627897.europe-west1.run.app',
+        target: 'https://menu-card-api-yvzycdnaqq-el.a.run.app',
         changeOrigin: true,
         secure: false,
         ws: true,
       },
-      '^/auth/login': {
-        target: 'https://menu-card-711863627897.europe-west1.run.app',
+      '/auth/login': {
+        target: 'https://menu-card-api-yvzycdnaqq-el.a.run.app',
         changeOrigin: true,
         secure: false,
       },
