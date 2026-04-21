@@ -242,7 +242,7 @@ const Checkout = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     setTablesLoading(true);
-    fetch('/api/operations/cafe-tables', {
+    fetch('https://menu-card-api-yvzycdnaqq-el.a.run.app/api/operations/cafe-tables', {
       headers: { 'Accept': 'text/plain', 'Authorization': `Bearer ${token}` },
     })
       .then((r) => r.json())

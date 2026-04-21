@@ -186,7 +186,7 @@ export const InventoryPage = () => {
         throw new Error('No authentication token found. Please log in.');
       }
 
-      const response = await fetch('/api/menu/ingredients', {
+      const response = await fetch('https://menu-card-api-yvzycdnaqq-el.a.run.app/api/menu/ingredients', {
         method: 'GET',
         headers: {
           'Accept': 'application/json',

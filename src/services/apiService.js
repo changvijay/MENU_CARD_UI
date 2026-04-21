@@ -1,5 +1,5 @@
 // API configuration and service functions
-const API_BASE_URL = '/api';
+const API_BASE_URL = 'https://menu-card-api-yvzycdnaqq-el.a.run.app/api';
 
 // API endpoints
 export const API_ENDPOINTS = {
