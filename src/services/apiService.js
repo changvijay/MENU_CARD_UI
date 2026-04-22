@@ -6,7 +6,7 @@ export const API_ENDPOINTS = {
   FOOD_ITEMS: `${API_BASE_URL}/menu/food_items`,
   CATEGORIES: `${API_BASE_URL}/menu/categories`,
   ORDERS: `${API_BASE_URL}/order`,
-  WEBSOCKET: `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/websocket/orders`,
+  WEBSOCKET: `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//https://menu-card-api-yvzycdnaqq-el.a.run.app/api/websocket/orders`,
   // Operations endpoints
   CASH_FLOW_CATEGORIES: `${API_BASE_URL}/operations/cash-flow-categories`,
   CASH_FLOW: `${API_BASE_URL}/operations/cash-flow`,
