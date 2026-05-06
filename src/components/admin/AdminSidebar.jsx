@@ -18,6 +18,11 @@ export const AdminSidebar = ({ isOpen, isMobile, onClose }) => {
 
   const navItems = [
     {
+      label: 'Dashboard',
+      path: '/admin/dashboard',
+      icon: '📊',
+    },
+    {
       label: 'Ingredients',
       path: '/admin/ingredients',
       icon: '🥘',

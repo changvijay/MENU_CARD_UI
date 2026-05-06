@@ -1,12 +1,12 @@
 // API configuration and service functions
-const API_BASE_URL = 'https://menu-card-api-yvzycdnaqq-el.a.run.app/api';
-
+// const API_BASE_URL = 'https://menu-card-api-yvzycdnaqq-el.a.run.app/api';
+const API_BASE_URL = 'http://localhost:8080/api';
 // API endpoints
 export const API_ENDPOINTS = {
   FOOD_ITEMS: `${API_BASE_URL}/menu/food_items`,
   CATEGORIES: `${API_BASE_URL}/menu/categories`,
   ORDERS: `${API_BASE_URL}/order`,
-  WEBSOCKET: `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//menu-card-api-yvzycdnaqq-el.a.run.app/api/websocket/orders`,
+  WEBSOCKET: `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//localhost:8080/api/websocket/orders`,
   // Operations endpoints
   CASH_FLOW_CATEGORIES: `${API_BASE_URL}/operations/cash-flow-categories`,
   CASH_FLOW: `${API_BASE_URL}/operations/cash-flow`,
@@ -16,6 +16,8 @@ export const API_ENDPOINTS = {
   // Auth endpoints
   USERS: `${API_BASE_URL}/auth/getusers`,
   UPDATE_ROLE: `${API_BASE_URL}/auth/UpdateRole`,
+  // Business analytics
+  BUSINESS_DASHBOARD: `${API_BASE_URL}/operations/business-dashboard`,
   // Add more endpoints here as needed
 };
 
@@ -758,6 +760,26 @@ export const cashFlowCategoriesApi = {
 
 // Cash Flow API functions
 export const cashFlowApi = {
+  // Get cash flow categories
+  getCategories: async () => {
+    try {
+      const response = await apiCall(API_ENDPOINTS.CASH_FLOW_CATEGORIES, {
+        method: 'GET',
+      });
+      return response.data || [];
+    } catch (error) {
+      console.error('Error fetching cash flow categories:', error);
+      const errorMessage = error.message?.includes('token')
+        ? 'Authentication failed. Please log in again.'
+        : error.message?.includes('403') || error.message?.includes('401')
+        ? 'Access denied. You do not have permission to view cash flow categories.'
+        : error.message?.includes('500')
+        ? 'Server error occurred while fetching cash flow categories. Please try again later.'
+        : `Failed to fetch cash flow categories: ${error.message}`;
+      throw new Error(errorMessage);
+    }
+  },
+
   getAll: async (range = 2) => { // Default to range 2 (7 days)
     try {
       const url = `${API_ENDPOINTS.CASH_FLOW}?range=${range}`;
@@ -960,6 +982,22 @@ export const inventoryTransactionsApi = {
   },
 };
 
+// Business Dashboard API
+export const businessDashboardApi = {
+  get: async (range = '1m') => {
+    try {
+      const response = await apiCall(`${API_ENDPOINTS.BUSINESS_DASHBOARD}?range=${range}`, {
+        method: 'GET',
+        headers: { 'Accept': 'text/plain' },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching business dashboard:', error);
+      throw error;
+    }
+  },
+};
+
 export default {
   foodItemsApi,
   categoriesApi,
@@ -982,4 +1020,5 @@ export default {
   cafeTablesApi,
   inventoryApi,
   inventoryTransactionsApi,
+  businessDashboardApi,
 };

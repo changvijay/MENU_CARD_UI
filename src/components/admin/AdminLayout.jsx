@@ -74,8 +74,8 @@ export const AdminLayout = ({ children }) => {
         />
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-3 md:p-6">
-          <div className="max-w-7xl mx-auto">{children}</div>
+        <main className="flex-1 overflow-y-auto rounded-lg p-3 md:p-6">
+          <div className="max-w-12xl mx-auto">{children}</div>
         </main>
       </div>
     </div>

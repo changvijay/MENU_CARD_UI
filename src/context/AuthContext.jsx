@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }) => {
   const login = (tenantId = 2) => {
     sessionStorage.setItem('auth_redirect', window.location.pathname);
     const returnUrl = encodeURIComponent(`${window.location.origin}/auth/callback`);
-    window.location.href = `https://menu-card-api-yvzycdnaqq-el.a.run.app/api/auth/login/${tenantId}?returnUrl=${returnUrl}`;
+    window.location.href = `http://localhost:8080/api/auth/login/${tenantId}?returnUrl=${returnUrl}`;
   };
 
   // Step 2: Called by AuthCallback page after backend redirects back with token + user in query params

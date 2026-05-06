@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//menu-card-api-yvzycdnaqq-el.a.run.app/api/websocket/orders`;
+const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//localhost:8080/api/websocket/orders`;
 const MAX_RECONNECT = 5;
 
 export const useWebSocketOrders = () => {

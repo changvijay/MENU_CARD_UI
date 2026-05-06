@@ -159,6 +159,10 @@ export const CashFlowPage = () => {
   const [loading, setLoading] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [range, setRange] = useState(2); // Default to 7 days
+  
+  // Categories State
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
 
   // Cash Flow Entry Form State
   const [showForm, setShowForm] = useState(false);
@@ -181,6 +185,7 @@ export const CashFlowPage = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => { fetchAllData(); }, [range]);
+  useEffect(() => { fetchCategories(); }, []);
 
   const fetchAllData = async () => {
     try {
@@ -194,6 +199,26 @@ export const CashFlowPage = () => {
       setCashFlowEntries([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      setCategoriesLoading(true);
+      const categoriesData = await cashFlowApi.getCategories();
+      setCategories(categoriesData);
+    } catch (error) {
+      console.error('Failed to fetch cash flow categories:', error);
+      showToast('Failed to load categories. Using default options.', 'error');
+      // Set fallback categories if API fails
+      setCategories([
+        { id: 'fallback-1', name: 'Salary', type: 'income' },
+        { id: 'fallback-2', name: 'Rent', type: 'expense' },
+        { id: 'fallback-3', name: 'Utilities', type: 'expense' },
+        { id: 'fallback-4', name: 'Office Supplies', type: 'expense' },
+      ]);
+    } finally {
+      setCategoriesLoading(false);
     }
   };
 
@@ -224,6 +249,14 @@ export const CashFlowPage = () => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (formErrors[name]) setFormErrors(prev => ({ ...prev, [name]: '' }));
+    
+    // Auto-update transaction type when category is selected
+    if (name === 'category') {
+      const selectedCategory = categories.find(cat => cat.name === value);
+      if (selectedCategory) {
+        setFormData(prev => ({ ...prev, [name]: value, type: selectedCategory.type }));
+      }
+    }
   };
 
   const handleFormSubmit = async () => {
@@ -514,7 +547,9 @@ export const CashFlowPage = () => {
               name="type"
               value={formData.type}
               onChange={handleFormChange}
+              disabled={categoriesLoading}
             >
+              <option value="">Select Transaction Type</option>
               <option value="income">Income</option>
               <option value="expense">Expense</option>
             </select>
@@ -525,24 +560,32 @@ export const CashFlowPage = () => {
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
               Category *
             </label>
-            <input
+            <select
               className={`cf-field ${formErrors.category ? 'error' : ''}`}
               name="category"
               value={formData.category}
               onChange={handleFormChange}
-              placeholder="e.g., Rent, Salary, Office Supplies"
-              list="category-suggestions"
-            />
-            <datalist id="category-suggestions">
-              <option value="Salary" />
-              <option value="Rent" />
-              <option value="Utilities" />
-              <option value="Office Supplies" />
-              <option value="Marketing" />
-              <option value="Equipment" />
-              <option value="Food & Beverage" />
-              <option value="Travel" />
-            </datalist>
+              disabled={categoriesLoading}
+            >
+              <option value="">Select Category</option>
+              {categories
+                .filter(cat => !formData.type || cat.type === formData.type)
+                .map((category) => (
+                  <option key={category.id} value={category.name}>
+                    {category.name} ({category.type})
+                  </option>
+                ))}
+            </select>
+            {categoriesLoading && (
+              <div style={{ fontSize: '0.75rem', color: 'rgb(148 163 184)', marginTop: '4px' }}>
+                Loading categories...
+              </div>
+            )}
+            {!categoriesLoading && categories.length === 0 && (
+              <div style={{ fontSize: '0.75rem', color: 'rgb(239 68 68)', marginTop: '4px' }}>
+                No categories available. Please add some categories first.
+              </div>
+            )}
             {formErrors.category && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{formErrors.category}</div>}
           </div>
 
