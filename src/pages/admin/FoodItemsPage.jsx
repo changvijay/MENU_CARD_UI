@@ -247,12 +247,21 @@ export const FoodItemsPage = () => {
     try {
       setFormLoading(true);
       const payload = { ...formData };
-      if (!payload.image) delete payload.image;
+      const newImageFile = payload.image instanceof File ? payload.image : null;
+      if (formMode === 'edit') delete payload.image; // image handled separately for edit
       if (!payload.preparationTimeMin) delete payload.preparationTimeMin;
       if (!payload.calories) delete payload.calories;
       const formPayload = createFormData(payload);
-      if (formMode === 'create') { await adminFoodItemsApi.create(formPayload); showToast('Food item created successfully', 'success'); }
-      else { await adminFoodItemsApi.update(formPayload); showToast('Food item updated successfully', 'success'); }
+      if (formMode === 'create') {
+        await adminFoodItemsApi.create(formPayload);
+        showToast('Food item created successfully', 'success');
+      } else {
+        await adminFoodItemsApi.update(formPayload);
+        if (newImageFile) {
+          await adminFoodItemsApi.updateImage(formData.id, newImageFile);
+        }
+        showToast('Food item updated successfully', 'success');
+      }
       setShowForm(false); await fetchAllData();
     } catch (error) { showToast(error.message, 'error'); }
     finally { setFormLoading(false); }

@@ -51,7 +51,7 @@ export const useWebSocketOrders = () => {
                     case 'payment_status_update':
                         setPaymentUpdates(prev => [msg.data, ...prev]);
                         break;
-                    case 'waittime_update':
+                    case 'avg_wait_time_update':
                         setWaitTimeUpdates(prev => [msg.data, ...prev]);
                         break;
                     default:

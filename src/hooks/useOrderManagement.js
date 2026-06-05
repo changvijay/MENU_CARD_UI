@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ordersApi, isAdmin, isAuthenticated } from '../services/apiService';
+import { ordersApi, isStaffOrAdmin, getUserRole, isAuthenticated } from '../services/apiService';
 import { useWebSocketOrders } from './useWebSocketOrders';
+import { useOrderNotification } from '../context/OrderNotificationContext';
 
 /**
  * Custom hook for managing orders with real-time WebSocket updates
@@ -19,13 +20,20 @@ export const useOrderManagement = (tableId = null) => {
   
   // WebSocket connection via dedicated hook
   const { liveOrders, statusUpdates, paymentUpdates, waitTimeUpdates, isConnected: wsConnected, clearLatestStatusUpdate, clearLatestPaymentUpdate, clearLatestWaitTimeUpdate, manualReconnect } = useWebSocketOrders();
+
+  // Global notification context
+  const { registerUserOrderIds } = useOrderNotification() || {};
   
   // User role state
   const [isUserAdmin, setIsUserAdmin] = useState(false);
+  const [userRole, setUserRole] = useState('user');
   
   // Check user role on mount
   useEffect(() => {
-    setIsUserAdmin(isAdmin());
+    setIsUserAdmin(isStaffOrAdmin());
+    const raw = getUserRole() || 'user';
+    // Normalize: 'admin' stays lowercase; staff roles uppercased so ViewOrders lookups are consistent
+    setUserRole(raw.toLowerCase() === 'admin' ? 'admin' : raw.toUpperCase());
   }, []);
 
   // Merge live WebSocket orders into pending & all-orders lists
@@ -92,10 +100,44 @@ export const useOrderManagement = (tableId = null) => {
     setUserOrders(applyUpdate);
   }, [statusUpdates]);
 
-  // Fetch all orders (admin only)
+  // Apply real-time payment status updates from WebSocket
+  useEffect(() => {
+    if (paymentUpdates.length === 0) return;
+    const { orderId, newPaymentStatus } = paymentUpdates[0];
+
+    const applyUpdate = (list) =>
+      list.map(o =>
+        o.orderId === orderId || o.id === orderId
+          ? { ...o, paymentStatus: newPaymentStatus }
+          : o
+      );
+
+    setPendingOrders(applyUpdate);
+    setOrders(applyUpdate);
+    setUserOrders(applyUpdate);
+  }, [paymentUpdates]);
+
+  // Apply real-time wait time updates from WebSocket
+  useEffect(() => {
+    if (waitTimeUpdates.length === 0) return;
+    const { orderId, newAvgWaitTime } = waitTimeUpdates[0];
+
+    const applyUpdate = (list) =>
+      list.map(o =>
+        o.orderId === orderId || o.id === orderId
+          ? { ...o, avgWaitTime: newAvgWaitTime }
+          : o
+      );
+
+    setPendingOrders(applyUpdate);
+    setOrders(applyUpdate);
+    setUserOrders(applyUpdate);
+  }, [waitTimeUpdates]);
+
+  // Fetch all orders (staff/admin only)
   const fetchAllOrders = useCallback(async () => {
-    if (!isUserAdmin) {
-      setError('Access denied. Admin privileges required.');
+    if (!isStaffOrAdmin()) {
+      setError('Access denied. Staff or admin privileges required.');
       return;
     }
 
@@ -137,6 +179,7 @@ export const useOrderManagement = (tableId = null) => {
     try {
       const data = await ordersApi.getUserOrders(userId);
       setUserOrders(data);
+      if (registerUserOrderIds) registerUserOrderIds(data.map(o => String(o.orderId || o.id)));
     } catch (err) {
       setError(err.message);
       console.error('Error fetching user orders:', err);
@@ -167,10 +210,10 @@ export const useOrderManagement = (tableId = null) => {
     }
   }, [fetchUserOrders, fetchPendingOrders]);
 
-  // Update order status (admin only)
+  // Update order status (staff/admin only)
   const updateOrderStatus = useCallback(async (orderId, newStatus) => {
-    if (!isUserAdmin) {
-      setError('Access denied. Admin privileges required.');
+    if (!isStaffOrAdmin()) {
+      setError('Access denied. Staff or admin privileges required.');
       return;
     }
 
@@ -241,13 +284,14 @@ export const useOrderManagement = (tableId = null) => {
 
   return {
     // State
-    orders,           // All orders (admin only)
+    orders,           // All orders (staff/admin only)
     pendingOrders,    // Pending orders (public)
     userOrders,       // Current user's orders (public)
     loading,
     error,
     wsConnected,
     isUserAdmin,
+    userRole,
     statusUpdates,    // Latest status update from WebSocket
     paymentUpdates,   // Latest payment status update
     waitTimeUpdates,  // Latest wait time update

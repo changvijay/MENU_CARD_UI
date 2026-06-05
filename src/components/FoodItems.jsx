@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { foodItemsApi, categoriesApi, transformFoodItem, transformCategory, isAuthenticated } from '../services/apiService';
+import { foodItemsApi, categoriesApi, transformFoodItem, transformCategory } from '../services/apiService';
 import FoodItemCard from './FoodItemCard';
 
 /* ─── Inline design tokens (no Tailwind overrides needed) ─── */
@@ -357,11 +357,11 @@ const FoodItems = () => {
   }, [token]);
 
   const fetchData = async () => {
-    if (!isAuthenticated()) {
-      setError('Please log in to view menu items');
-      setLoading(false);
-      return;
-    }
+    // if (!isAuthenticated()) {
+    //   setError('Please log in to view menu items');
+    //   setLoading(false);
+    //   return;
+    // }
     try {
       setLoading(true); setError(null);
       

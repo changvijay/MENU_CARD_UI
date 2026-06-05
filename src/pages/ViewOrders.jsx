@@ -28,18 +28,50 @@ const t = {
 
 /* ─── Status config ─── */
 const STATUS = {
-  pending:   { dot: '#F59E0B', bg: '#FFFBEB', text: '#92400E', label: 'Pending',   strip: '#F59E0B' },
-  confirmed: { dot: '#3B82F6', bg: '#EFF6FF', text: '#1E40AF', label: 'Confirmed', strip: '#3B82F6' },
-  preparing: { dot: '#F97316', bg: '#FFF7ED', text: '#9A3412', label: 'Preparing', strip: '#F97316' },
-  ready:     { dot: '#10B981', bg: '#ECFDF5', text: '#065F46', label: 'Ready',     strip: '#10B981' },
-  completed: { dot: '#6B7280', bg: '#F9FAFB', text: '#374151', label: 'Completed', strip: '#9CA3AF' },
-  cancelled: { dot: '#EF4444', bg: '#FEF2F2', text: '#991B1B', label: 'Cancelled', strip: '#EF4444' },
+  pending:          { dot: '#F59E0B', bg: '#FFFBEB', text: '#92400E', label: 'Pending',          strip: '#F59E0B' },
+  confirmed:        { dot: '#3B82F6', bg: '#EFF6FF', text: '#1E40AF', label: 'Confirmed',        strip: '#3B82F6' },
+  preparing:        { dot: '#F97316', bg: '#FFF7ED', text: '#9A3412', label: 'Preparing',        strip: '#F97316' },
+  ready:            { dot: '#10B981', bg: '#ECFDF5', text: '#065F46', label: 'Ready',            strip: '#10B981' },
+  out_for_delivery: { dot: '#8B5CF6', bg: '#F5F3FF', text: '#5B21B6', label: 'Out for Delivery', strip: '#8B5CF6' },
+  delivered:        { dot: '#10B981', bg: '#ECFDF5', text: '#065F46', label: 'Delivered',        strip: '#10B981' },
+  completed:        { dot: '#6B7280', bg: '#F9FAFB', text: '#374151', label: 'Completed',        strip: '#9CA3AF' },
+  cancelled:        { dot: '#EF4444', bg: '#FEF2F2', text: '#991B1B', label: 'Cancelled',        strip: '#EF4444' },
 };
 
-const STATUS_FLOW = [
-  { target: 'completed', label: 'Complete', icon: '✓' },
-  { target: 'cancelled', label: 'Cancel',   icon: '✕', danger: true },
-];
+/* ─── Role-based status flows ─── */
+const ROLE_STATUS_FLOWS = {
+  COOK: [
+    { target: 'preparing',        label: 'Start Preparing',   icon: '👨‍🍳' },
+    { target: 'out_for_delivery', label: 'Out for Delivery',  icon: '🛵' },
+  ],
+  SERVER: [
+    { target: 'delivered',        label: 'Mark Delivered',    icon: '✓' },
+  ],
+  admin: [
+    { target: 'preparing',        label: 'Preparing',         icon: '👨‍🍳' },
+    { target: 'ready',            label: 'Ready',             icon: '🔔' },
+    { target: 'out_for_delivery', label: 'Out for Delivery',  icon: '🛵' },
+    { target: 'delivered',        label: 'Delivered',         icon: '📦' },
+    { target: 'completed',        label: 'Complete',          icon: '✓' },
+    { target: 'cancelled',        label: 'Cancel',            icon: '✕', danger: true },
+  ],
+};
+
+/* ─── Role permission helpers ─── */
+const canUpdatePayment  = (role) => ['admin', 'cashier'].includes((role || '').toLowerCase());
+const canUpdateWaitTime = (role) => ['admin', 'cook'].includes((role || '').toLowerCase());
+
+const getStatusButtons = (order, role) => {
+  const done = ['completed', 'cancelled'].includes(order.status);
+  if (done) return [];
+  const flow = ROLE_STATUS_FLOWS[role] || [];
+  return flow.filter(s => {
+    if (s.target === order.status) return false;
+    // SERVER may only transition out_for_delivery → delivered
+    if (role === 'SERVER' && s.target === 'delivered' && order.status !== 'out_for_delivery') return false;
+    return true;
+  });
+};
 
 /* ─── Helpers ─── */
 const formatPrice = (p) => `₹${(Number(p) || 0).toFixed(2)}`;
@@ -60,7 +92,7 @@ const deliveryLabel = (m) => ({ dinein: 'Dine In', takeaway: 'Takeaway', deliver
 /* ─── StatusBadge ─── */
 const StatusBadge = ({ status }) => {
   const cfg = STATUS[status] || STATUS.pending;
-  const pulse = status === 'pending' || status === 'preparing';
+  const pulse = status === 'pending' || status === 'preparing' || status === 'out_for_delivery';
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: '5px',
@@ -104,6 +136,79 @@ const PaymentBadge = ({ status }) => {
       <span style={{ fontSize: '9px' }}>{cfg.icon}</span>
       {cfg.label}
     </span>
+  );
+};
+
+/* ─── Status progress steps ─── */
+const STATUS_STEPS = [
+  { key: 'preparing',        label: 'Preparing',        icon: '👨‍🍳' },
+  { key: 'ready',            label: 'Ready',            icon: '🔔' },
+  { key: 'out_for_delivery', label: 'Out for\nDelivery', icon: '🛵' },
+  { key: 'delivered',        label: 'Delivered',        icon: '📦' },
+  { key: 'completed',        label: 'Complete',         icon: '✓' },
+];
+
+/* ─── StatusStepper ─── */
+const StatusStepper = ({ status }) => {
+  if (status === 'cancelled') return null;
+  const currentIdx = STATUS_STEPS.findIndex(s => s.key === status);
+  return (
+    <div style={{
+      padding: '14px 20px 12px',
+      background: '#FDFCFA',
+      borderTop: `1px solid ${t.borderLight}`,
+      display: 'flex',
+      alignItems: 'flex-start',
+      flexShrink: 0,
+    }}>
+      {STATUS_STEPS.flatMap((step, i) => {
+        const isDone   = currentIdx > i;
+        const isActive = currentIdx === i;
+        const els = [];
+        els.push(
+          <div key={`step-${step.key}`} style={{
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', gap: '5px',
+            flex: '0 0 auto', width: '56px',
+          }}>
+            <div style={{
+              width: '28px', height: '28px', borderRadius: '50%',
+              background: isDone || isActive ? t.accent : t.surface,
+              border: `2px solid ${isDone || isActive ? t.accent : t.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '11px',
+              color: isDone || isActive ? '#fff' : t.textLight,
+              flexShrink: 0,
+              transition: 'all 0.3s',
+              ...(isActive ? { boxShadow: `0 0 0 4px ${t.accentGlow}` } : {}),
+            }}>
+              {isDone ? '✓' : step.icon}
+            </div>
+            <span style={{
+              fontSize: '9px',
+              fontWeight: isActive ? 700 : 500,
+              color: isDone || isActive ? t.accentDark : t.textLight,
+              textAlign: 'center',
+              lineHeight: 1.3,
+              whiteSpace: 'pre-line',
+            }}>{step.label}</span>
+          </div>
+        );
+        if (i < STATUS_STEPS.length - 1) {
+          els.push(
+            <div key={`conn-${i}`} style={{
+              flex: 1,
+              height: '2px',
+              background: isDone ? t.accent : t.borderLight,
+              marginBottom: '18px',
+              transition: 'background 0.3s',
+              minWidth: '6px',
+            }} />
+          );
+        }
+        return els;
+      })}
+    </div>
   );
 };
 
@@ -199,6 +304,8 @@ const OrderItemsModal = ({ order, onClose }) => {
             onMouseLeave={e => { e.currentTarget.style.background = t.surfaceAlt; e.currentTarget.style.color = t.textMuted; e.currentTarget.style.borderColor = t.border; }}
           >×</button>
         </div>
+
+        <StatusStepper status={order.status} />
 
         {/* Notes */}
         {order.notes && (
@@ -315,16 +422,21 @@ const OrderItemsModal = ({ order, onClose }) => {
 };
 
 /* ─── OrderCard ─── */
-const OrderCard = ({ order, showActions, onStatusUpdate, onCardClick, loading, wsConnected, manualReconnect, animDelay = 0 }) => {
+const OrderCard = ({ order, showActions, userRole, onStatusUpdate, onCardClick, loading, wsConnected, manualReconnect, animDelay = 0 }) => {
   const [showWaitInput, setShowWaitInput] = useState(false);
   const [waitVal, setWaitVal] = useState(order.avgWaitTime || '');
   const cfg = STATUS[order.status] || STATUS.pending;
-  const isDone = order.status === 'completed' || order.status === 'cancelled';
+  const isDone = ['completed', 'cancelled', 'delivered'].includes(order.status);
 
   const handlePayment = (v) => {
     if (!wsConnected) manualReconnect();
     onStatusUpdate(order.id, `payment:${v}`);
   };
+
+  const statusButtons = showActions ? getStatusButtons(order, userRole) : [];
+  const showPayment   = showActions && canUpdatePayment(userRole);
+  const showWaitTime  = showActions && canUpdateWaitTime(userRole);
+  const hasAnyAction  = statusButtons.length > 0 || showPayment || showWaitTime;
 
   return (
     <div
@@ -357,7 +469,7 @@ const OrderCard = ({ order, showActions, onStatusUpdate, onCardClick, loading, w
         background: cfg.strip,
         flexShrink: 0,
         borderRadius: `${t.radius} 0 0 ${t.radius}`,
-        ...(order.status === 'pending' || order.status === 'preparing'
+        ...(['pending', 'preparing', 'out_for_delivery'].includes(order.status)
           ? { animation: 'stripPulse 2s ease-in-out infinite' } : {}),
       }} />
 
@@ -442,8 +554,10 @@ const OrderCard = ({ order, showActions, onStatusUpdate, onCardClick, loading, w
           )}
         </div>
 
+        <StatusStepper status={order.status} />
+
         {/* ── Actions ── */}
-        {showActions && (
+        {hasAnyAction && (
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
@@ -454,47 +568,45 @@ const OrderCard = ({ order, showActions, onStatusUpdate, onCardClick, loading, w
               background: '#FDFCFA',
             }}>
 
-            {/* Left: status buttons */}
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {STATUS_FLOW.filter(s => {
-                if (isDone) return false;
-                if (s.target === order.status) return false;
-                return true;
-              }).map(({ target, label, icon, danger }) => (
-                <button key={target}
-                  onClick={() => onStatusUpdate(order.id, target)}
-                  disabled={loading}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '20px',
-                    border: danger ? `1.5px solid #EF444440` : `1.5px solid ${t.border}`,
-                    background: danger ? '#FEF2F2' : t.surfaceAlt,
-                    color: danger ? '#B91C1C' : t.text,
-                    fontSize: '12px', fontWeight: 600,
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '5px',
-                    fontFamily: 'inherit',
-                    transition: 'all 0.15s',
-                    opacity: loading ? 0.6 : 1,
-                  }}
-                  onMouseEnter={e => {
-                    if (loading) return;
-                    e.currentTarget.style.background = danger ? '#FEE2E2' : t.accentLight;
-                    if (!danger) e.currentTarget.style.borderColor = t.accent;
-                    e.currentTarget.style.transform = 'scale(1.02)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = danger ? '#FEF2F2' : t.surfaceAlt;
-                    e.currentTarget.style.borderColor = danger ? '#EF444440' : t.border;
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }}
-                >
-                  <span style={{ fontSize: '11px' }}>{icon}</span> {label}
-                </button>
-              ))}
-            </div>
+            {/* Left: role-based status buttons */}
+            {statusButtons.length > 0 && (
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {statusButtons.map(({ target, label, icon, danger }) => (
+                  <button key={target}
+                    onClick={() => onStatusUpdate(order.id, target)}
+                    disabled={loading}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '20px',
+                      border: danger ? `1.5px solid #EF444440` : `1.5px solid ${t.border}`,
+                      background: danger ? '#FEF2F2' : t.surfaceAlt,
+                      color: danger ? '#B91C1C' : t.text,
+                      fontSize: '12px', fontWeight: 600,
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '5px',
+                      fontFamily: 'inherit',
+                      transition: 'all 0.15s',
+                      opacity: loading ? 0.6 : 1,
+                    }}
+                    onMouseEnter={e => {
+                      if (loading) return;
+                      e.currentTarget.style.background = danger ? '#FEE2E2' : t.accentLight;
+                      if (!danger) e.currentTarget.style.borderColor = t.accent;
+                      e.currentTarget.style.transform = 'scale(1.02)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = danger ? '#FEF2F2' : t.surfaceAlt;
+                      e.currentTarget.style.borderColor = danger ? '#EF444440' : t.border;
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  >
+                    <span style={{ fontSize: '11px' }}>{icon}</span> {label}
+                  </button>
+                ))}
+              </div>
+            )}
 
-            {/* Right: payment + wait time */}
+            {/* Right: payment + wait time (role-gated) */}
             <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
 
               {!wsConnected && (
@@ -505,113 +617,117 @@ const OrderCard = ({ order, showActions, onStatusUpdate, onCardClick, loading, w
                 }}>⚡ WS Offline</span>
               )}
 
-              {/* Payment dropdown */}
-              <div style={{ position: 'relative' }}>
-                <select
-                  value={order.paymentStatus || 'unpaid'}
-                  onChange={e => handlePayment(e.target.value)}
-                  disabled={loading}
-                  style={{
-                    padding: '6px 28px 6px 12px',
-                    borderRadius: '20px',
-                    border: `1.5px solid #8B5CF640`,
-                    background: '#F8F5FF',
-                    color: '#5B21B6',
-                    fontSize: '11px', fontWeight: 700,
-                    fontFamily: 'inherit',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    appearance: 'none',
-                    letterSpacing: '0.03em',
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%235B21B6' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 10px center',
-                    transition: 'all 0.15s',
-                    opacity: loading ? 0.6 : 1,
-                  }}
-                  onMouseEnter={e => { if (!loading) e.target.style.background = '#EDE9FE'; }}
-                  onMouseLeave={e => { e.target.style.background = '#F8F5FF'; }}
-                >
-                  <option value="unpaid">⏳ Unpaid</option>
-                  <option value="paid">✓ Paid</option>
-                  <option value="refunded">↩ Refunded</option>
-                </select>
-              </div>
-
-              {/* Wait time */}
-              {!showWaitInput ? (
-                <button
-                  onClick={() => { setShowWaitInput(true); setWaitVal(order.avgWaitTime || ''); }}
-                  disabled={loading}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '20px',
-                    border: `1.5px solid #8B5CF640`,
-                    background: '#F8F5FF', color: '#5B21B6',
-                    fontSize: '11px', fontWeight: 700,
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '4px',
-                    fontFamily: 'inherit', transition: 'all 0.15s',
-                    opacity: loading ? 0.6 : 1,
-                    letterSpacing: '0.03em',
-                  }}
-                  onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#EDE9FE'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#F8F5FF'; }}
-                >
-                  ⏱ {order.avgWaitTime ? `${order.avgWaitTime} min` : 'Wait time'}
-                </button>
-              ) : (
-                <div style={{
-                  display: 'flex', gap: '5px', alignItems: 'center',
-                  padding: '4px 8px 4px 4px',
-                  background: '#F8F5FF', border: `1.5px solid #8B5CF640`,
-                  borderRadius: '20px',
-                }}>
-                  <input
-                    type="number"
-                    value={waitVal}
-                    onChange={e => setWaitVal(e.target.value)}
-                    min="0" max="999"
-                    placeholder="min"
-                    autoFocus
+              {/* Payment dropdown — CASHIER and admin only */}
+              {showPayment && (
+                <div style={{ position: 'relative' }}>
+                  <select
+                    value={order.paymentStatus || 'unpaid'}
+                    onChange={e => handlePayment(e.target.value)}
+                    disabled={loading}
                     style={{
-                      width: '54px', padding: '3px 8px',
-                      borderRadius: '14px', border: `1px solid #8B5CF640`,
-                      fontSize: '12px', fontFamily: 'inherit',
-                      outline: 'none', background: 'white',
-                      color: '#5B21B6', fontWeight: 600,
+                      padding: '6px 28px 6px 12px',
+                      borderRadius: '20px',
+                      border: `1.5px solid #8B5CF640`,
+                      background: '#F8F5FF',
+                      color: '#5B21B6',
+                      fontSize: '11px', fontWeight: 700,
+                      fontFamily: 'inherit',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      appearance: 'none',
+                      letterSpacing: '0.03em',
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%235B21B6' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 10px center',
+                      transition: 'all 0.15s',
+                      opacity: loading ? 0.6 : 1,
                     }}
-                    onFocus={e => e.target.style.borderColor = '#8B5CF6'}
-                    onBlur={e => e.target.style.borderColor = '#8B5CF640'}
-                  />
-                  <button
-                    onClick={() => {
-                      if (waitVal && !isNaN(waitVal)) {
-                        onStatusUpdate(order.id, `waittime:${waitVal}`);
-                        setShowWaitInput(false);
-                      }
-                    }}
-                    disabled={loading || !waitVal}
-                    style={{
-                      padding: '4px 10px', borderRadius: '14px', border: 'none',
-                      background: '#7C3AED', color: 'white', fontSize: '11px', fontWeight: 700,
-                      cursor: loading || !waitVal ? 'not-allowed' : 'pointer',
-                      fontFamily: 'inherit', opacity: !waitVal ? 0.5 : 1, transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={e => { if (waitVal) e.currentTarget.style.background = '#6D28D9'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = '#7C3AED'; }}
-                  >Save</button>
-                  <button
-                    onClick={() => setShowWaitInput(false)}
-                    style={{
-                      padding: '4px 8px', borderRadius: '14px',
-                      border: 'none', background: 'transparent',
-                      color: '#9CA3AF', fontSize: '11px', fontWeight: 600,
-                      cursor: 'pointer', fontFamily: 'inherit',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.color = '#6B7280'; }}
-                    onMouseLeave={e => { e.currentTarget.style.color = '#9CA3AF'; }}
-                  >✕</button>
+                    onMouseEnter={e => { if (!loading) e.target.style.background = '#EDE9FE'; }}
+                    onMouseLeave={e => { e.target.style.background = '#F8F5FF'; }}
+                  >
+                    <option value="unpaid">⏳ Unpaid</option>
+                    <option value="paid">✓ Paid</option>
+                    <option value="refunded">↩ Refunded</option>
+                  </select>
                 </div>
+              )}
+
+              {/* Wait time — COOK and admin only */}
+              {showWaitTime && (
+                !showWaitInput ? (
+                  <button
+                    onClick={() => { setShowWaitInput(true); setWaitVal(order.avgWaitTime || ''); }}
+                    disabled={loading}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '20px',
+                      border: `1.5px solid #8B5CF640`,
+                      background: '#F8F5FF', color: '#5B21B6',
+                      fontSize: '11px', fontWeight: 700,
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '4px',
+                      fontFamily: 'inherit', transition: 'all 0.15s',
+                      opacity: loading ? 0.6 : 1,
+                      letterSpacing: '0.03em',
+                    }}
+                    onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#EDE9FE'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#F8F5FF'; }}
+                  >
+                    ⏱ {order.avgWaitTime ? `${order.avgWaitTime} min` : 'Wait time'}
+                  </button>
+                ) : (
+                  <div style={{
+                    display: 'flex', gap: '5px', alignItems: 'center',
+                    padding: '4px 8px 4px 4px',
+                    background: '#F8F5FF', border: `1.5px solid #8B5CF640`,
+                    borderRadius: '20px',
+                  }}>
+                    <input
+                      type="number"
+                      value={waitVal}
+                      onChange={e => setWaitVal(e.target.value)}
+                      min="0" max="999"
+                      placeholder="min"
+                      autoFocus
+                      style={{
+                        width: '54px', padding: '3px 8px',
+                        borderRadius: '14px', border: `1px solid #8B5CF640`,
+                        fontSize: '12px', fontFamily: 'inherit',
+                        outline: 'none', background: 'white',
+                        color: '#5B21B6', fontWeight: 600,
+                      }}
+                      onFocus={e => e.target.style.borderColor = '#8B5CF6'}
+                      onBlur={e => e.target.style.borderColor = '#8B5CF640'}
+                    />
+                    <button
+                      onClick={() => {
+                        if (waitVal && !isNaN(waitVal)) {
+                          onStatusUpdate(order.id, `waittime:${waitVal}`);
+                          setShowWaitInput(false);
+                        }
+                      }}
+                      disabled={loading || !waitVal}
+                      style={{
+                        padding: '4px 10px', borderRadius: '14px', border: 'none',
+                        background: '#7C3AED', color: 'white', fontSize: '11px', fontWeight: 700,
+                        cursor: loading || !waitVal ? 'not-allowed' : 'pointer',
+                        fontFamily: 'inherit', opacity: !waitVal ? 0.5 : 1, transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={e => { if (waitVal) e.currentTarget.style.background = '#6D28D9'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#7C3AED'; }}
+                    >Save</button>
+                    <button
+                      onClick={() => setShowWaitInput(false)}
+                      style={{
+                        padding: '4px 8px', borderRadius: '14px',
+                        border: 'none', background: 'transparent',
+                        color: '#9CA3AF', fontSize: '11px', fontWeight: 600,
+                        cursor: 'pointer', fontFamily: 'inherit',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#6B7280'; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = '#9CA3AF'; }}
+                    >✕</button>
+                  </div>
+                )
               )}
             </div>
           </div>
@@ -689,7 +805,7 @@ const ViewOrders = () => {
   const navigate = useNavigate();
   const {
     orders, pendingOrders, userOrders, loading, error,
-    isUserAdmin, wsConnected, manualReconnect,
+    isUserAdmin, userRole, wsConnected, manualReconnect,
     updateOrderStatus, fetchAllOrders, fetchPendingOrders, clearError,
   } = useOrderManagement();
 
@@ -704,6 +820,14 @@ const ViewOrders = () => {
     setActiveTab(isUserAdmin ? 'pending' : 'myOrders');
   }, [isUserAdmin]);
 
+  const ROLE_SUBTITLES = {
+    CASHIER: 'View orders and manage payment status',
+    SERVER:  'View orders and mark deliveries',
+    COOK:    'View orders, update status and wait times',
+    admin:   'Manage and track all restaurant orders',
+  };
+  const headerSub = ROLE_SUBTITLES[userRole] || 'Track your order history';
+
   const handleStatusUpdate = async (orderId, newStatus) => {
     try { await updateOrderStatus(orderId, newStatus); }
     catch (err) { console.error('Error updating status:', err); }
@@ -711,15 +835,28 @@ const ViewOrders = () => {
 
   const tabs = isUserAdmin
     ? [
-        { id: 'pending',   label: 'Pending',    count: pendingOrders.length },
-        { id: 'all',       label: 'All Orders',  count: orders.length },
+        { id: 'pending',         label: 'Pending',          count: pendingOrders.length },
+        { id: 'preparing',       label: 'Preparing',        count: orders.filter(o => o.status === 'preparing').length },
+        { id: 'ready',           label: 'Ready',            count: orders.filter(o => o.status === 'ready').length },
+        { id: 'outForDelivery',  label: 'Out for Delivery', count: orders.filter(o => o.status === 'out_for_delivery').length },
+        { id: 'delivered',       label: 'Delivered',        count: orders.filter(o => o.status === 'delivered').length },
+        { id: 'completed',       label: 'Completed',        count: orders.filter(o => o.status === 'completed').length },
+        { id: 'all',             label: 'All Orders',       count: orders.length },
       ]
     : [{ id: 'myOrders', label: 'My Orders', count: userOrders.length }];
 
   const currentOrders =
-    activeTab === 'pending' ? pendingOrders :
-    activeTab === 'all'     ? orders :
+    activeTab === 'pending'        ? pendingOrders :
+    activeTab === 'preparing'      ? orders.filter(o => o.status === 'preparing') :
+    activeTab === 'ready'          ? orders.filter(o => o.status === 'ready') :
+    activeTab === 'outForDelivery' ? orders.filter(o => o.status === 'out_for_delivery') :
+    activeTab === 'delivered'      ? orders.filter(o => o.status === 'delivered') :
+    activeTab === 'completed'      ? orders.filter(o => o.status === 'completed') :
+    activeTab === 'all'            ? orders :
     userOrders;
+
+  // Show actions panel for any staff/admin role on the management tabs
+  const showActionsForTab = isUserAdmin && activeTab !== 'myOrders';
 
   if (!isAuthenticated()) return null;
 
@@ -770,7 +907,7 @@ const ViewOrders = () => {
                 }}>Orders</h1>
               </div>
               <p style={{ fontSize: '13px', color: t.textLight, margin: 0, paddingLeft: '48px' }}>
-                {isUserAdmin ? 'Manage and track all restaurant orders' : 'Track your order history'}
+                {headerSub}
               </p>
             </div>
 
@@ -831,7 +968,7 @@ const ViewOrders = () => {
           background: t.surface,
           border: `1px solid ${t.border}`,
           borderRadius: '12px', padding: '4px',
-          width: 'fit-content',
+          overflowX: 'auto',
           animation: 'slideUp 0.4s cubic-bezier(0.16,1,0.3,1) 0.05s both',
           boxShadow: t.shadow,
         }}>
@@ -920,7 +1057,8 @@ const ViewOrders = () => {
               <OrderCard
                 key={order.orderNumber || i}
                 order={order}
-                showActions={isUserAdmin && (activeTab === 'pending' || activeTab === 'all')}
+                showActions={showActionsForTab}
+                userRole={userRole}
                 onStatusUpdate={handleStatusUpdate}
                 onCardClick={() => setSelectedOrder(order)}
                 loading={loading}
@@ -932,7 +1070,7 @@ const ViewOrders = () => {
           )}
         </div>
 
-        {/* ── Stats Footer (admin only) ── */}
+        {/* ── Stats Footer (staff/admin only) ── */}
         {isUserAdmin && orders.length > 0 && (
           <div style={{
             marginTop: '36px',

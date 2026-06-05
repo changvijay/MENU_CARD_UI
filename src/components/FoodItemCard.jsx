@@ -41,6 +41,7 @@ const FoodItemCard = ({ item = {} }) => {
   const [ingrOpen,      setIngrOpen]  = useState(false);
   const [alrgOpen,      setAlrgOpen]  = useState(false);
   const [imgErr,        setImgErr]    = useState(false);
+  const [imgModal,      setImgModal]  = useState(false);
 
   // Sync quantity with cart changes
   useEffect(() => {
@@ -95,11 +96,53 @@ const FoodItemCard = ({ item = {} }) => {
       fontFamily: "'DM Sans', system-ui, sans-serif",
     }}>
 
+      {/* ── Image Lightbox Modal ── */}
+      {imgModal && image && !imgErr && (
+        <div
+          onClick={() => setImgModal(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20, cursor: 'zoom-out',
+          }}
+        >
+          <button
+            onClick={() => setImgModal(false)}
+            style={{
+              position: 'absolute', top: 18, right: 18,
+              width: 40, height: 40, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.25)',
+              color: '#fff', fontSize: 20, lineHeight: 1,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+            aria-label="Close image"
+          >✕</button>
+          <img
+            src={image}
+            alt={name}
+            onClick={e => e.stopPropagation()}
+            style={{
+              maxWidth: '100%', maxHeight: '90vh',
+              borderRadius: 16, objectFit: 'contain',
+              boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+              cursor: 'default',
+            }}
+          />
+          <div style={{
+            position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+            color: 'rgba(255,255,255,0.75)', fontSize: 14, fontWeight: 600,
+            fontFamily: "'DM Sans', sans-serif", pointerEvents: 'none',
+          }}>{name}</div>
+        </div>
+      )}
+
       {/* ── Image ── */}
       <div style={{ position: "relative", height: 200, background: "#f0eeea", overflow: "hidden" }}>
         {image && !imgErr ? (
           <img src={image} alt={name} onError={() => setImgErr(true)}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            onClick={() => setImgModal(true)}
+            style={{ width: "100%", height: "100%", objectFit: "cover", cursor: 'zoom-in' }} />
         ) : (
           <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center",
             justifyContent: "center", background: "#f0eeea" }}>
@@ -180,8 +223,15 @@ const FoodItemCard = ({ item = {} }) => {
             ₹{price.toFixed(2)}
           </div>
         </div>
-
-        <p style={{ fontSize:12.5, color:"#888", lineHeight:1.6, marginBottom:12 }}>{description}</p>
+<p
+  style={{
+    maxHeight: "98px",
+    overflowY: "auto",
+    scrollBehavior: "smooth",
+  }}
+>
+  {description}
+</p>
 
         {/* Categories */}
         {categories.length > 0 && (

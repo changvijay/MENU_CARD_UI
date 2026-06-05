@@ -232,10 +232,10 @@ export const ordersApi = {
     }
   },
 
-  // ADMIN ONLY: Get all orders (requires admin role)
+  // STAFF/ADMIN: Get all orders (requires staff or admin role)
   getAllOrders: async () => {
-    if (!isAdmin()) {
-      throw new Error('Access denied. Admin privileges required.');
+    if (!isStaffOrAdmin()) {
+      throw new Error('Access denied. Staff or admin privileges required.');
     }
 
     try {
@@ -250,10 +250,10 @@ export const ordersApi = {
     }
   },
 
-  // ADMIN ONLY: Update order status (requires admin role)
+  // STAFF/ADMIN: Update order status (requires staff or admin role)
   updateOrderStatus: async (orderId, newStatus) => {
-    if (!isAdmin()) {
-      throw new Error('Access denied. Admin privileges required.');
+    if (!isStaffOrAdmin()) {
+      throw new Error('Access denied. Staff or admin privileges required.');
     }
 
     try {
@@ -269,10 +269,11 @@ export const ordersApi = {
     }
   },
 
-  // ADMIN ONLY: Update order payment status (requires admin role)
+  // CASHIER/ADMIN: Update order payment status
   updatePaymentStatus: async (orderId, paymentStatus) => {
-    if (!isAdmin()) {
-      throw new Error('Access denied. Admin privileges required.');
+    const role = (getUserRole() || '').toLowerCase();
+    if (!['admin', 'cashier'].includes(role)) {
+      throw new Error('Access denied. Cashier or admin privileges required.');
     }
 
     try {
@@ -288,10 +289,11 @@ export const ordersApi = {
     }
   },
 
-  // ADMIN ONLY: Update average wait time (requires admin role)
+  // COOK/ADMIN: Update average wait time
   updateAvgWaitTime: async (orderId, avgWaitTime) => {
-    if (!isAdmin()) {
-      throw new Error('Access denied. Admin privileges required.');
+    const role = (getUserRole() || '').toLowerCase();
+    if (!['admin', 'cook'].includes(role)) {
+      throw new Error('Access denied. Cook or admin privileges required.');
     }
 
     try {
@@ -508,6 +510,24 @@ export const isAdmin = () => {
   }
 };
 
+// Returns the current user's role string (as stored, e.g. 'admin', 'CASHIER', 'cashier', etc.)
+export const getUserRole = () => {
+  try {
+    const userJson = localStorage.getItem('user');
+    const user = userJson ? JSON.parse(userJson) : null;
+    return user?.role || 'user';
+  } catch {
+    return 'user';
+  }
+};
+
+// Returns true for any role that can view / manage all orders (all roles except 'user')
+// Case-insensitive so it works regardless of how the backend stores the role
+export const isStaffOrAdmin = () => {
+  const role = (getUserRole() || '').toLowerCase();
+  return ['admin', 'cashier', 'server', 'cook'].includes(role);
+};
+
 // Helper function to get current user info
 export const getCurrentUser = () => {
   try {
@@ -695,6 +715,21 @@ export const adminFoodItemsApi = {
       return response.data;
     } catch (error) {
       console.error('Error updating food item:', error);
+      throw error;
+    }
+  },
+
+  updateImage: async (id, imageFile) => {
+    try {
+      const formData = new FormData();
+      formData.append('newImage', imageFile);
+      const response = await apiCallFormData(`${API_BASE_URL}/menu/updatefooditemimg/${id}`, {
+        method: 'PATCH',
+        body: formData,
+      });
+      return response;
+    } catch (error) {
+      console.error(`Error updating image for food item ${id}:`, error);
       throw error;
     }
   },
