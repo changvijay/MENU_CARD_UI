@@ -211,7 +211,7 @@ export const ordersApi = {
         method: 'GET',
       });
       
-      return response.data;
+      return transformOrderResponse(response.data);
     } catch (error) {
       console.error(`Error fetching order ${orderId}:`, error);
       throw error;
