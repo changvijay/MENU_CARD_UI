@@ -268,18 +268,27 @@ export const useOrderManagement = (tableId = null) => {
     }
   }, []);
 
-  // Initialize data on mount
+  // Initialize data on mount & set up fallback polling interval (runs every 15 seconds)
   useEffect(() => {
     if (!isAuthenticated()) return;
 
     // Fetch initial data
     fetchPendingOrders();
     fetchUserOrders();
-    
-    // Fetch all orders if admin
     if (isUserAdmin) {
       fetchAllOrders();
     }
+
+    // Set up fallback polling every 15 seconds as a safety backup
+    const interval = setInterval(() => {
+      fetchPendingOrders();
+      fetchUserOrders();
+      if (isUserAdmin) {
+        fetchAllOrders();
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
   }, [isUserAdmin, fetchPendingOrders, fetchUserOrders, fetchAllOrders]);
 
   return {
