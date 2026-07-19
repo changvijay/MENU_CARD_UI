@@ -124,7 +124,7 @@ export const CartProvider = ({ children }) => {
     localStorage.setItem('menu_cart', JSON.stringify(cart));
   }, [cart]);
   const subtotal = cart.items.reduce((sum, item) => sum + item.subtotal, 0);
-  const tax = subtotal * 0.1; // 10% tax
+  const tax = subtotal * 0.0; // 0% tax
   const discount = 0; // Can be implemented later
   const finalAmount = subtotal + tax - discount;
   const itemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);

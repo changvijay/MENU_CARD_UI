@@ -551,7 +551,7 @@ const Checkout = () => {
                   <span style={{ color: tokens.text, fontWeight: 500 }}>{formatPrice(subtotal)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: tokens.textMuted }}>
-                  <span>Tax (10%)</span>
+                  <span>Tax (0%)</span>
                   <span style={{ color: tokens.text, fontWeight: 500 }}>{formatPrice(tax)}</span>
                 </div>
                 {discount > 0 && (
