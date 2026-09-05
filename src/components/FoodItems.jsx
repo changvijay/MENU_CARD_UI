@@ -296,22 +296,117 @@ const css = `
   }
 
   /* ── ERROR STATE ── */
+  .fi-error-shell {
+    min-height: calc(100vh - 80px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 20px;
+  }
   .fi-error {
-    background: #FFF5F3; border: 1.5px solid #FCCAB8;
-    border-radius: var(--r-xl); padding: 48px 32px;
-    text-align: center; max-width: 480px; margin: 0 auto;
+    width: min(100%, 560px);
+    background: linear-gradient(145deg, #FFFDF9 0%, #FFF7ED 100%);
+    border: 1.5px solid #F2D8C7;
+    border-radius: 28px;
+    padding: 36px 32px;
+    box-shadow: 0 18px 48px rgba(28,24,21,.08);
+    position: relative;
+    overflow: hidden;
   }
-  .fi-error-icon { font-size: 44px; margin-bottom: 14px; }
-  .fi-error-title { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 700; color: var(--txt); margin-bottom: 8px; }
-  .fi-error-msg { font-size: 14px; color: var(--txt-2); margin-bottom: 20px; line-height: 1.6; }
+  .fi-error::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top right, rgba(217,79,30,.08), transparent 42%);
+    pointer-events: none;
+  }
+  .fi-error-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: var(--brand-lt);
+    color: var(--brand);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .fi-error-icon {
+    width: 64px;
+    height: 64px;
+    display: grid;
+    place-items: center;
+    border-radius: 20px;
+    font-size: 30px;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #FFF2E8 0%, #FFE0CC 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+  }
+  .fi-error-title {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--txt);
+    margin: 0 0 10px;
+    line-height: 1.2;
+  }
+  .fi-error-msg {
+    font-size: 15px;
+    color: var(--txt-2);
+    margin: 0 0 18px;
+    line-height: 1.7;
+  }
+  .fi-error-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .fi-error-meta span {
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: #FFF;
+    border: 1px solid var(--border);
+    color: var(--txt-3);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .fi-error-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .fi-retry, .fi-login {
+    padding: 11px 20px;
+    border: none;
+    border-radius: var(--r-full);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .2s, box-shadow .2s, background .2s;
+  }
   .fi-retry {
-    padding: 11px 24px;
-    background: var(--brand); color: #fff;
-    border: none; border-radius: var(--r-full);
-    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700;
-    cursor: pointer; transition: background .2s;
+    background: #FFF;
+    color: var(--txt);
+    border: 1.5px solid var(--border);
   }
-  .fi-retry:hover { background: var(--brand-hv); }
+  .fi-retry:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--sh-xs);
+  }
+  .fi-login {
+    background: var(--brand);
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(217,79,30,.18);
+  }
+  .fi-login:hover {
+    background: var(--brand-hv);
+    transform: translateY(-1px);
+  }
 
   /* ── ACTIVE SORT LABEL ── */
   .fi-sort-label {
@@ -446,18 +541,24 @@ const FoodItems = () => {
   if (error) return (
     <div className="fi-root">
       <style>{css}</style>
-      <div className="fi-page fi-error-shell" style={{ display:'flex', justifyContent:'center', paddingTop: 80 }}>
+      <div className="fi-page fi-error-shell">
         <div className="fi-error">
-          <div className="fi-error-icon">{isAuthError ? '🍽️' : '⚠️'}</div>
+          <div className="fi-error-pill">🔐 Secure access</div>
+          <div className="fi-error-icon">🍽️</div>
           <div className="fi-error-title">
             {isAuthError ? 'Sign in to browse the menu' : 'Couldn\'t load menu'}
           </div>
           <div className="fi-error-msg">{displayErrorMessage}</div>
-          <div className="fi-error-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            {isAuthError && (
-              <button className="fi-retry" style={{ background: 'var(--brand)', color: '#fff' }} onClick={() => login(tenant?.id || 4)}>Log in</button>
-            )}
-            <button className="fi-retry" onClick={fetchData}>Try Again</button>
+          <div className="fi-error-meta">
+            <span>Fresh dishes</span>
+            <span>Fast checkout</span>
+            <span>Personalized experience</span>
+          </div>
+          <div className="fi-error-actions">
+            {isAuthError ? (
+              <button className="fi-login" onClick={() => login(tenant?.id || 4)}>Log in</button>
+            ) : null}
+            <button className="fi-retry" onClick={fetchData}>Try again</button>
           </div>
         </div>
       </div>
