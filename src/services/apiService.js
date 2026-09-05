@@ -1019,9 +1019,13 @@ export const inventoryTransactionsApi = {
 
 // Business Dashboard API
 export const businessDashboardApi = {
-  get: async (range = '1m') => {
+  get: async (range = '1m', startDate = null, endDate = null) => {
     try {
-      const response = await apiCall(`${API_ENDPOINTS.BUSINESS_DASHBOARD}?range=${range}`, {
+      let url = `${API_ENDPOINTS.BUSINESS_DASHBOARD}?range=${range}`;
+      if (startDate && endDate) {
+        url += `&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+      }
+      const response = await apiCall(url, {
         method: 'GET',
         headers: { 'Accept': 'text/plain' },
       });

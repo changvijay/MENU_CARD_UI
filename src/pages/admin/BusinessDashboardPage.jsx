@@ -167,18 +167,24 @@ const Section = ({ title, icon, children, className = '' }) => (
 );
 
 // ─── Main page ────────────────────────────────────────────────────────────────
+import { exportReportToExcel, exportReportToCSV } from '../../utils/excelExportUtil';
+
+// ... existing code snippet header ...
 export default function BusinessDashboardPage() {
   const [range, setRange] = useState('1m');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [isCustomRange, setIsCustomRange] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [meta, setMeta] = useState(null);
 
-  const load = useCallback(async (r) => {
+  const load = useCallback(async (r, start = null, end = null) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await businessDashboardApi.get(r);
+      const result = await businessDashboardApi.get(r, start, end);
       setData(result);
       setMeta(result?.meta);
     } catch (err) {
@@ -188,7 +194,40 @@ export default function BusinessDashboardPage() {
     }
   }, []);
 
-  useEffect(() => { load(range); }, [range, load]);
+  useEffect(() => {
+    if (!isCustomRange) {
+      load(range);
+    }
+  }, [range, isCustomRange, load]);
+
+  const handleCustomRangeApply = (e) => {
+    e.preventDefault();
+    if (!startDate || !endDate) {
+      setError('Please select both start date and end date.');
+      return;
+    }
+    if (new Date(startDate) > new Date(endDate)) {
+      setError('Start date cannot be after end date.');
+      return;
+    }
+    load(range, startDate, endDate);
+  };
+
+  const handleRangePreset = (r) => {
+    setIsCustomRange(false);
+    setRange(r);
+  };
+
+  const handleExportExcel = () => {
+    const rangeText = isCustomRange && startDate && endDate
+      ? `${startDate} to ${endDate}`
+      : meta ? `${meta.from?.slice(0, 10)} to ${meta.to?.slice(0, 10)}` : range;
+    exportReportToExcel(data, rangeText);
+  };
+
+  const handleExportCSV = (type) => {
+    exportReportToCSV(data, type);
+  };
 
   // ── derived data ────────────────────────────────────────────────────────────
   const summary = data?.summary;
@@ -259,30 +298,102 @@ export default function BusinessDashboardPage() {
       {/* ── Header ── */}
       <div className="bd-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h1 className="bd-title">Business Dashboard</h1>
-          {dateRange && <p className="bd-subtitle">{dateRange}</p>}
+          <h1 className="bd-title">Reports & Analytics</h1>
+          {dateRange && <p className="bd-subtitle">Period: {dateRange}</p>}
           {!loading && error && (
             <p style={{ color: '#ef4444', fontSize: '0.875rem', marginTop: 6 }}>⚠ {error}</p>
           )}
         </div>
-        <div className="bd-range-group">
-          {RANGES.map((r) => (
+
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+          {/* Controls & Export buttons */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <button
-              key={r.value}
-              className={`bd-range-btn${range === r.value ? ' active' : ''}`}
-              onClick={() => setRange(r.value)}
+              onClick={handleExportExcel}
+              disabled={!data || loading}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '8px 16px', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600,
+                background: '#10b981', color: '#fff', border: 'none', cursor: 'pointer',
+                opacity: !data || loading ? 0.6 : 1, transition: 'background 0.2s',
+              }}
+              title="Export complete report to Excel file (.xlsx)"
             >
-              {r.label}
+              📥 Export to Excel (.xlsx)
             </button>
-          ))}
-          <button
-            className="bd-range-btn"
-            onClick={() => load(range)}
-            style={{ borderColor: '#e2e8f0' }}
-            title="Refresh"
-          >
-            {loading ? '⟳' : '↺ Refresh'}
-          </button>
+
+            <button
+              onClick={() => handleExportCSV('summary')}
+              disabled={!data || loading}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '8px 14px', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600,
+                background: '#0284c7', color: '#fff', border: 'none', cursor: 'pointer',
+                opacity: !data || loading ? 0.6 : 1,
+              }}
+              title="Export report summary as CSV"
+            >
+              📄 CSV Summary
+            </button>
+
+            <button
+              className="bd-range-btn"
+              onClick={() => isCustomRange ? load(range, startDate, endDate) : load(range)}
+              style={{ borderColor: '#e2e8f0' }}
+              title="Refresh Report Data"
+            >
+              {loading ? '⟳' : '↺ Refresh'}
+            </button>
+          </div>
+
+          {/* Preset Buttons & Custom Date Range toggle */}
+          <div className="bd-range-group" style={{ alignItems: 'center' }}>
+            {RANGES.map((r) => (
+              <button
+                key={r.value}
+                className={`bd-range-btn${!isCustomRange && range === r.value ? ' active' : ''}`}
+                onClick={() => handleRangePreset(r.value)}
+              >
+                {r.label}
+              </button>
+            ))}
+            <button
+              className={`bd-range-btn${isCustomRange ? ' active' : ''}`}
+              onClick={() => setIsCustomRange(!isCustomRange)}
+            >
+              📅 Custom Date Range
+            </button>
+          </div>
+
+          {/* Custom Date Range Picker form */}
+          {isCustomRange && (
+            <form onSubmit={handleCustomRangeApply} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: '#fff', padding: '10px 14px', borderRadius: 10, border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgb(0 0 0 / .05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>From:</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.8125rem' }}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>To:</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.8125rem' }}
+                />
+              </div>
+              <button
+                type="submit"
+                style={{ padding: '6px 14px', borderRadius: 6, background: '#3b82f6', color: '#fff', border: 'none', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Apply Range
+              </button>
+            </form>
+          )}
         </div>
       </div>
 

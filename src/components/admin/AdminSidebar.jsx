@@ -18,6 +18,11 @@ export const AdminSidebar = ({ isOpen, isMobile, onClose }) => {
 
   const navItems = [
     {
+      label: 'Reports & Analytics',
+      path: '/admin/dashboard',
+      icon: '📈',
+    },
+    {
       label: 'Dashboard',
       path: '/admin/dashboard',
       icon: '📊',

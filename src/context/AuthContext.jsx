@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { setAuthLogoutCallback } from '../services/apiService';
+import { useTenant } from './TenantContext';
 
 const AuthContext = createContext();
 
@@ -28,6 +29,7 @@ const isTokenExpired = (token) => {
 
 export const AuthProvider = ({ children }) => {
   const logoutRef = useRef(null); // Use ref to avoid dependency cycles
+  const { tenant } = useTenant();
 
   const [user, setUser] = useState(() => {
     try {
@@ -63,7 +65,13 @@ export const AuthProvider = ({ children }) => {
 
   // Step 1: Save current path in sessionStorage → redirect to ASP.NET backend → backend redirects to Auth0
   //         Pass this UI's callback URL so the shared backend knows where to redirect after Auth0 login
-  const login = (tenantId = 2) => {
+  const login = () => {
+    const tenantId = tenant?.id;
+    if (!tenantId) {
+      console.error("Tenant ID is missing");
+      return;
+    }
+    
     sessionStorage.setItem('auth_redirect', window.location.pathname);
     const returnUrl = encodeURIComponent(`${window.location.origin}/auth/callback`);
     window.location.href = `https://menu-card-api-yvzycdnaqq-el.a.run.app/api/auth/login/${tenantId}?returnUrl=${returnUrl}`;

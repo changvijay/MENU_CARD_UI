@@ -23,10 +23,12 @@ import InventoryPage from './pages/admin/InventoryPage'
 import UsersPage from './pages/admin/UsersPage'
 import BusinessDashboardPage from './pages/admin/BusinessDashboardPage'
 import './App.css'
+import { TenantProvider } from './context/TenantContext'
 
 function App() {
   return (
-    <AuthProvider>
+    <TenantProvider>
+      <AuthProvider>
       <AdminProvider>
         <CartProvider>
           <OrderNotificationProvider>
@@ -83,6 +85,7 @@ function App() {
         </CartProvider>
       </AdminProvider>
     </AuthProvider>
+    </TenantProvider>
   )
 }
 

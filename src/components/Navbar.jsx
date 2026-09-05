@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useTenant } from '../context/TenantContext';
 
 const CartIcon = ({ itemCount }) => (
   <Link
@@ -82,6 +83,7 @@ const Navbar = () => {
   const location = useLocation();
   const { user, login, logout } = useAuth();
   const { itemCount } = useCart();
+  const { tenant } = useTenant();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isActive = (path) => location.pathname === path;
@@ -98,8 +100,9 @@ const Navbar = () => {
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex justify-between items-center py-4">
           <div>
-            <Link to="/" className="text-xl font-bold text-gray-800">
-              Menu UI
+            <Link to="/" className="text-xl font-bold text-gray-800 flex items-center space-x-2">
+              {tenant?.logoUrl && <img src={tenant.logoUrl} alt={tenant.businessName || 'Logo'} className="h-8" />}
+              <span>{tenant?.businessName || 'Menu UI'}</span>
             </Link>
           </div>
 
@@ -122,7 +125,7 @@ const Navbar = () => {
             {user ? (
               <UserMenu user={user} onLogout={logout} />
             ) : (
-              <button onClick={() => login(2)} className="btn-primary">
+              <button onClick={() => login()} className="btn-primary">
                 Login
               </button>
             )}
@@ -135,7 +138,7 @@ const Navbar = () => {
             {user ? (
               <UserMenu user={user} onLogout={logout} />
             ) : (
-              <button onClick={() => login(2)} className="btn-primary text-sm py-1.5 px-3">
+              <button onClick={() => login()} className="btn-primary text-sm py-1.5 px-3">
                 Login
               </button>
             )}

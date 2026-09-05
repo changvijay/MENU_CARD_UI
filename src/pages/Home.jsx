@@ -236,7 +236,7 @@ const Home = () => {
         <button
           onClick={() => {
             sessionStorage.setItem('pending_table_scan', tableNumber);
-            login(2);
+            login();
           }}
           style={{
             width: '100%',
