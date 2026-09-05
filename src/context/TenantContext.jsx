@@ -20,8 +20,21 @@ export const TenantProvider = ({ children }) => {
     const fetchTenantConfig = async () => {
       try {
         const hostname = window.location.hostname;
-        const subdomain = hostname.split('.')[0];
+        const parts = hostname.split('.');
+        const subdomain = parts[0]?.toLowerCase();
         
+        // If main domain or standard vercel/localhost host, directly use default Chai Sutta Bar
+        const isMainOrGeneric = 
+          !subdomain || 
+          ['localhost', '127', 'menu-card-ui', 'chaisuttabarchennai', 'www'].includes(subdomain) ||
+          parts.length <= 2;
+
+        if (isMainOrGeneric) {
+          setTenant(defaultTenant);
+          setLoading(false);
+          return;
+        }
+
         const response = await axios.get(`https://menu-card-api-yvzycdnaqq-el.a.run.app/api/tenant/info?subdomain=${subdomain}`);
         
         if (response.data && response.data.success && response.data.data) {
@@ -32,8 +45,6 @@ export const TenantProvider = ({ children }) => {
             document.title = response.data.data.businessName || 'Chai Sutta Bar';
           }
         } else {
-          // Fallback to default Chai Sutta Bar tenant
-          console.warn('Tenant API response unsuccessful, using default Chai Sutta Bar config:', response.data?.message);
           setTenant(defaultTenant);
         }
       } catch (err) {
