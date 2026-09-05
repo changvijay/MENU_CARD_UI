@@ -22,6 +22,7 @@ import CafeTablesPage from './pages/admin/CafeTablesPage'
 import InventoryPage from './pages/admin/InventoryPage'
 import UsersPage from './pages/admin/UsersPage'
 import BusinessDashboardPage from './pages/admin/BusinessDashboardPage'
+import PromotionsPage from './pages/admin/PromotionsPage'
 import './App.css'
 import { TenantProvider } from './context/TenantContext'
 
@@ -71,6 +72,7 @@ function App() {
                             <Route path="inventory" element={<InventoryPage />} />
                             {/* User management routes */}
                             <Route path="users" element={<UsersPage />} />
+                            <Route path="promotions" element={<PromotionsPage />} />
                             <Route path="dashboard" element={<BusinessDashboardPage />} />
                             <Route path="" element={<IngredientsPage />} />
                           </Routes>
