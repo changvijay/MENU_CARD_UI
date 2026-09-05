@@ -5,6 +5,7 @@ import ConfirmDeleteModal from '../../components/admin/shared/ConfirmDeleteModal
 import { ToastContainer } from '../../components/admin/shared/Toast';
 import {
   cashFlowApi,
+  cashFlowCategoriesApi,
 } from '../../services/apiService';
 import { validateCashFlow } from '../../utils/validators';
 import { createFormData } from '../../utils/imageUploadHandler';
@@ -205,17 +206,55 @@ export const CashFlowPage = () => {
   const fetchCategories = async () => {
     try {
       setCategoriesLoading(true);
-      const categoriesData = await cashFlowApi.getCategories();
-      setCategories(categoriesData);
+      const categoriesData = await cashFlowCategoriesApi.getAll();
+      if (!categoriesData || categoriesData.length === 0) {
+        // Fallback options: auto-create in backend since the backend requires foreign key
+        const defaultsToCreate = [
+          { name: 'General Income', type: 'income' },
+          { name: 'General Expense', type: 'expense' },
+          { name: 'Salary', type: 'expense' },
+          { name: 'Rent', type: 'expense' },
+          { name: 'Utilities', type: 'expense' },
+          { name: 'Office Supplies', type: 'expense' },
+        ];
+        
+        try {
+          const createdCategories = [];
+          for (const cat of defaultsToCreate) {
+             const created = await cashFlowCategoriesApi.create(cat);
+             if (created) createdCategories.push(created);
+          }
+          if (createdCategories.length > 0) {
+            setCategories(createdCategories);
+            return;
+          }
+        } catch (createErr) {
+          console.error('Failed to auto-create categories:', createErr);
+        }
+
+        // Fallback to in-memory if backend creation fails
+        setCategories([
+          { id: 'fallback-1', name: 'General Income', type: 'income' },
+          { id: 'fallback-2', name: 'General Expense', type: 'expense' },
+          { id: 'fallback-3', name: 'Salary', type: 'expense' },
+          { id: 'fallback-4', name: 'Rent', type: 'expense' },
+          { id: 'fallback-5', name: 'Utilities', type: 'expense' },
+          { id: 'fallback-6', name: 'Office Supplies', type: 'expense' },
+        ]);
+      } else {
+        setCategories(categoriesData);
+      }
     } catch (error) {
       console.error('Failed to fetch cash flow categories:', error);
       showToast('Failed to load categories. Using default options.', 'error');
       // Set fallback categories if API fails
       setCategories([
-        { id: 'fallback-1', name: 'Salary', type: 'income' },
-        { id: 'fallback-2', name: 'Rent', type: 'expense' },
-        { id: 'fallback-3', name: 'Utilities', type: 'expense' },
-        { id: 'fallback-4', name: 'Office Supplies', type: 'expense' },
+        { id: 'fallback-1', name: 'General Income', type: 'income' },
+        { id: 'fallback-2', name: 'General Expense', type: 'expense' },
+        { id: 'fallback-3', name: 'Salary', type: 'expense' },
+        { id: 'fallback-4', name: 'Rent', type: 'expense' },
+        { id: 'fallback-5', name: 'Utilities', type: 'expense' },
+        { id: 'fallback-6', name: 'Office Supplies', type: 'expense' },
       ]);
     } finally {
       setCategoriesLoading(false);
@@ -269,7 +308,12 @@ export const CashFlowPage = () => {
 
     try {
       setFormLoading(true);
+      
+      const selectedCategory = categories.find(cat => cat.name === formData.category);
+      const parsedCategoryId = selectedCategory ? parseInt(selectedCategory.id) : 0;
+      
       const payload = {
+        categoryId: isNaN(parsedCategoryId) ? 0 : parsedCategoryId,
         category: formData.category,
         amount: parseFloat(formData.amount),
         description: formData.description,

@@ -297,10 +297,10 @@ export const InventoryPage = () => {
         quantityChange: parseFloat(transactionFormData.quantityChange),
         notes: transactionFormData.notes || '',
         createdBy: parseInt(transactionFormData.createdBy),
-        cost: parseFloat(transactionFormData.cost) || 0,
+        cost: transactionFormData.cost !== '' ? parseFloat(transactionFormData.cost) : 0,
         unit: transactionFormData.unit,
-        minThreshold: parseFloat(transactionFormData.minThreshold) || null,
-        costPerUnit: parseFloat(transactionFormData.costPerUnit) || null,
+        minThreshold: transactionFormData.minThreshold !== '' ? parseFloat(transactionFormData.minThreshold) : null,
+        costPerUnit: transactionFormData.costPerUnit !== '' ? parseFloat(transactionFormData.costPerUnit) : null,
       };
       
       await inventoryTransactionsApi.create(payload);
@@ -439,7 +439,7 @@ export const InventoryPage = () => {
   const actions = [
     ...(canEdit('operations') ? [{
       label: 'Add Transaction',
-            icon: '✏️',
+      icon: '✏️',
       onClick: (item) => {
         setTransactionFormData({
           ingredientId: item.ingredient_id.toString(),
@@ -538,184 +538,188 @@ export const InventoryPage = () => {
       </div>
 
       {/* Transaction Form Modal */}
-      <FormModal
-        isOpen={showTransactionForm}
-        title="Add Inventory Transaction"
-        submitLabel="Create Transaction"
-        onSubmit={handleTransactionFormSubmit}
-        onCancel={() => setShowTransactionForm(false)}
-        loading={transactionFormLoading}
-        error={Object.keys(transactionFormErrors).length > 0 ? 'Please fix the errors below.' : null}
-      >
-        <div style={{ display: 'grid', gap: '16px' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
-              Inventory Item *
-            </label>
-            <select
-              className={`inv-field ${transactionFormErrors.ingredientId ? 'error' : ''}`}
-              name="ingredientId"
-              value={transactionFormData.ingredientId}
-              onChange={handleTransactionFormChange}
-            >
-              <option value="">Select an ingredient</option>
-              {ingredients.map(ingredient => {
-                // Find matching inventory item to show current stock
-                const inventoryItem = inventoryItems.find(item => item.ingredient_id === ingredient.id);
-                const currentStock = inventoryItem ? `${inventoryItem.quantity || 0} ${inventoryItem.unit || 'units'}` : 'Not in inventory';
+      {(() => {
+        const isExistingIngredient = transactionFormData.ingredientId 
+          ? inventoryItems.some(item => item.ingredient_id === parseInt(transactionFormData.ingredientId))
+          : false;
+
+        return (
+          <FormModal
+            isOpen={showTransactionForm}
+            title="Add Inventory Transaction"
+            submitLabel="Create Transaction"
+            onSubmit={handleTransactionFormSubmit}
+            onCancel={() => setShowTransactionForm(false)}
+            loading={transactionFormLoading}
+            error={Object.keys(transactionFormErrors).length > 0 ? 'Please fix the errors below.' : null}
+          >
+            <div style={{ display: 'grid', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
+                  Inventory Item *
+                </label>
+                <select
+                  className={`inv-field ${transactionFormErrors.ingredientId ? 'error' : ''}`}
+                  name="ingredientId"
+                  value={transactionFormData.ingredientId}
+                  onChange={handleTransactionFormChange}
+                >
+                  <option value="">Select an ingredient</option>
+                  {ingredients.map(ingredient => {
+                    const inventoryItem = inventoryItems.find(item => item.ingredient_id === ingredient.id);
+                    const currentStock = inventoryItem ? `${inventoryItem.quantity || 0} ${inventoryItem.unit || 'units'}` : 'Not in inventory';
+                    
+                    return (
+                      <option key={ingredient.id} value={ingredient.id}>
+                        {ingredient.name} (Stock: {currentStock})
+                      </option>
+                    );
+                  })}
+                </select>
+                {transactionFormErrors.ingredientId && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.ingredientId}</div>}
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
+                  Transaction Type *
+                </label>
+                <select
+                  className={`inv-field ${transactionFormErrors.type ? 'error' : ''}`}
+                  name="type"
+                  value={transactionFormData.type}
+                  onChange={handleTransactionFormChange}
+                >
+                  <option value="STOCK_IN">Stock In (Add inventory)</option>
+                  <option value="STOCK_OUT">Stock Out (Used inventory)</option>
+                  <option value="ADJUSTMENT">Adjustment (Manual correction)</option>
+                  <option value="WASTE">Waste (Discarded items)</option>
+                </select>
+                {transactionFormErrors.type && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.type}</div>}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
+                    Quantity *
+                  </label>
+                  <input
+                    className={`inv-field ${transactionFormErrors.quantityChange ? 'error' : ''}`}
+                    name="quantityChange"
+                    type="number"
+                    step="0.001"
+                    value={transactionFormData.quantityChange}
+                    onChange={handleTransactionFormChange}
+                    placeholder="Enter quantity"
+                    min="0.001"
+                  />
+                  {transactionFormErrors.quantityChange && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.quantityChange}</div>}
+                </div>
                 
-                return (
-                  <option key={ingredient.id} value={ingredient.id}>
-                    {ingredient.name} (Stock: {currentStock})
-                  </option>
-                );
-              })}
-            </select>
-            {transactionFormErrors.ingredientId && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.ingredientId}</div>}
-          </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
+                    Unit
+                  </label>
+                  <input
+                    className={`inv-field ${transactionFormErrors.unit ? 'error' : ''}`}
+                    name="unit"
+                    value={transactionFormData.unit}
+                    onChange={handleTransactionFormChange}
+                    placeholder={isExistingIngredient ? "Auto-filled" : "kg, pieces, etc."}
+                    readOnly={isExistingIngredient}
+                  />
+                  {transactionFormErrors.unit && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.unit}</div>}
+                </div>
+              </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
-              Transaction Type *
-            </label>
-            <select
-              className={`inv-field ${transactionFormErrors.type ? 'error' : ''}`}
-              name="type"
-              value={transactionFormData.type}
-              onChange={handleTransactionFormChange}
-            >
-              <option value="STOCK_IN">Stock In (Add inventory)</option>
-              <option value="STOCK_OUT">Stock Out (Used inventory)</option>
-              <option value="ADJUSTMENT">Adjustment (Manual correction)</option>
-              <option value="WASTE">Waste (Discarded items)</option>
-            </select>
-            {transactionFormErrors.type && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.type}</div>}
-          </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
+                    Cost ($) 🧾
+                  </label>
+                  <input
+                    className={`inv-field ${transactionFormErrors.cost ? 'error' : ''}`}
+                    name="cost"
+                    type="number"
+                    step="0.01"
+                    value={transactionFormData.cost}
+                    onChange={handleTransactionFormChange}
+                    placeholder="Auto-calculated"
+                    min="0"
+                    title="Auto-calculated from Quantity × Cost Per Unit. You can edit manually if needed."
+                  />
+                  {transactionFormErrors.cost && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.cost}</div>}
+                  <div style={{ fontSize: '0.65rem', color: 'rgb(107 114 128)', marginTop: '2px' }}>
+                    🧾 Auto: {transactionFormData.quantityChange && transactionFormData.costPerUnit ? 
+                      `${transactionFormData.quantityChange} × $${transactionFormData.costPerUnit}` : 'Enter quantity & cost/unit'}
+                  </div>
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
+                    Min Threshold
+                  </label>
+                  <input
+                    className={`inv-field ${transactionFormErrors.minThreshold ? 'error' : ''}`}
+                    name="minThreshold"
+                    type="number"
+                    step="0.001"
+                    value={transactionFormData.minThreshold}
+                    onChange={handleTransactionFormChange}
+                    placeholder={isExistingIngredient ? "Auto-filled" : "Enter min threshold"}
+                    readOnly={isExistingIngredient}
+                  />
+                  {transactionFormErrors.minThreshold && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.minThreshold}</div>}
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
+                    Cost Per Unit ($) ✏️
+                  </label>
+                  <input
+                    className={`inv-field ${transactionFormErrors.costPerUnit ? 'error' : ''}`}
+                    name="costPerUnit"
+                    type="number"
+                    step="0.01"
+                    value={transactionFormData.costPerUnit}
+                    onChange={handleTransactionFormChange}
+                    placeholder="Enter cost per unit"
+                    min="0"
+                    title="Editable - Changes here will auto-update total cost"
+                  />
+                  {transactionFormErrors.costPerUnit && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.costPerUnit}</div>}
+                </div>
+              </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
-                Quantity *
-              </label>
-              <input
-                className={`inv-field ${transactionFormErrors.quantityChange ? 'error' : ''}`}
-                name="quantityChange"
-                type="number"
-                step="0.001"
-                value={transactionFormData.quantityChange}
-                onChange={handleTransactionFormChange}
-                placeholder="Enter quantity"
-                min="0.001"
-              />
-              {transactionFormErrors.quantityChange && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.quantityChange}</div>}
-            </div>
-            
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
-                Unit
-              </label>
-              <input
-                className={`inv-field ${transactionFormErrors.unit ? 'error' : ''}`}
-                name="unit"
-                value={transactionFormData.unit}
-                onChange={handleTransactionFormChange}
-                placeholder="kg, pieces, etc."
-                readOnly
-              />
-              {transactionFormErrors.unit && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.unit}</div>}
-            </div>
-          </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
+                  Notes
+                </label>
+                <textarea
+                  className={`inv-field ${transactionFormErrors.notes ? 'error' : ''}`}
+                  name="notes"
+                  value={transactionFormData.notes}
+                  onChange={handleTransactionFormChange}
+                  placeholder="Optional notes about this transaction"
+                  rows={3}
+                />
+                {transactionFormErrors.notes && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.notes}</div>}
+              </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
-                Cost ($) 🧾
-              </label>
-              <input
-                className={`inv-field ${transactionFormErrors.cost ? 'error' : ''}`}
-                name="cost"
-                type="number"
-                step="0.01"
-                value={transactionFormData.cost}
-                onChange={handleTransactionFormChange}
-                placeholder="Auto-calculated"
-                min="0"
-                title="Auto-calculated from Quantity × Cost Per Unit. You can edit manually if needed."
-              />
-              {transactionFormErrors.cost && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.cost}</div>}
-              <div style={{ fontSize: '0.65rem', color: 'rgb(107 114 128)', marginTop: '2px' }}>
-                🧾 Auto: {transactionFormData.quantityChange && transactionFormData.costPerUnit ? 
-                  `${transactionFormData.quantityChange} × $${transactionFormData.costPerUnit}` : 'Enter quantity & cost/unit'}
+              <div style={{ background: 'rgb(249 250 251)', padding: '12px', borderRadius: '8px', border: '1px solid rgb(229 231 235)' }}>
+                <div style={{ fontSize: '0.75rem', color: 'rgb(107 114 128)', marginBottom: '4px' }}>💡 How it works</div>
+                <div style={{ fontSize: '0.875rem', color: 'rgb(75 85 99)', lineHeight: 1.4 }}>
+                  • <strong>Ingredient Selection:</strong> Choose from all available ingredients<br/>
+                  • <strong>Auto-Population:</strong> If ingredient exists in inventory, unit/cost data auto-fills<br/>
+                  • <strong>New Ingredients:</strong> For ingredients not in inventory, enter details manually<br/>
+                  • <strong>Auto-Calculation:</strong> Total cost = Quantity × Cost Per Unit
+                </div>
               </div>
             </div>
-            
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
-                Min Threshold
-              </label>
-              <input
-                className={`inv-field ${transactionFormErrors.minThreshold ? 'error' : ''}`}
-                name="minThreshold"
-                type="number"
-                step="0.001"
-                value={transactionFormData.minThreshold}
-                onChange={handleTransactionFormChange}
-                placeholder="Auto-filled"
-                readOnly
-                style={{ backgroundColor: 'rgb(249 250 251)', color: 'rgb(107 114 128)' }}
-              />
-              {transactionFormErrors.minThreshold && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.minThreshold}</div>}
-            </div>
-            
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
-                Cost Per Unit ($) ✏️
-              </label>
-              <input
-                className={`inv-field ${transactionFormErrors.costPerUnit ? 'error' : ''}`}
-                name="costPerUnit"
-                type="number"
-                step="0.01"
-                value={transactionFormData.costPerUnit}
-                onChange={handleTransactionFormChange}
-                placeholder="Enter cost per unit"
-                min="0"
-                title="Editable - Changes here will auto-update total cost"
-              />
-              {transactionFormErrors.costPerUnit && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.costPerUnit}</div>}
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: 'rgb(71 85 105)' }}>
-              Notes
-            </label>
-            <textarea
-              className={`inv-field ${transactionFormErrors.notes ? 'error' : ''}`}
-              name="notes"
-              value={transactionFormData.notes}
-              onChange={handleTransactionFormChange}
-              placeholder="Optional notes about this transaction"
-              rows={3}
-            />
-            {transactionFormErrors.notes && <div style={{ color: 'rgb(239 68 68)', fontSize: '0.75rem', marginTop: '4px' }}>{transactionFormErrors.notes}</div>}
-          </div>
-
-          <div style={{ background: 'rgb(249 250 251)', padding: '12px', borderRadius: '8px', border: '1px solid rgb(229 231 235)' }}>
-            <div style={{ fontSize: '0.75rem', color: 'rgb(107 114 128)', marginBottom: '4px' }}>💡 How it works</div>
-            <div style={{ fontSize: '0.875rem', color: 'rgb(75 85 99)', lineHeight: 1.4 }}>
-              • <strong>Ingredient Selection:</strong> Choose from all available ingredients<br/>
-              • <strong>Auto-Population:</strong> If ingredient exists in inventory, unit/cost data auto-fills<br/>
-              • <strong>New Ingredients:</strong> For ingredients not in inventory, enter details manually<br/>
-              • <strong>Auto-Calculation:</strong> Total cost = Quantity × Cost Per Unit
-            </div>
-          </div>
-        </div>
-      </FormModal>
-
+          </FormModal>
+        );
+      })()}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 };
-
 export default InventoryPage;
