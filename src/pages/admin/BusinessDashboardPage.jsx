@@ -5,6 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { businessDashboardApi } from '../../services/apiService';
+import { exportReportToExcel, exportReportToCSV, exportSingleReportToCSV } from '../../utils/excelExportUtil';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const STYLE = `
@@ -156,20 +157,43 @@ const KpiCard = ({ icon, label, value, delta, prefix = '', suffix = '' }) => (
 );
 
 // ─── Section ──────────────────────────────────────────────────────────────────
-const Section = ({ title, icon, children, className = '' }) => (
+const Section = ({ title, icon, children, className = '', onExport }) => (
   <div className={`bd-card ${className}`}>
-    <div className="bd-section-heading">
-      <span>{icon}</span>
-      <span>{title}</span>
+    <div className="bd-section-heading" style={{ justifyContent: 'space-between', width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span>{icon}</span>
+        <span>{title}</span>
+      </div>
+      {onExport && (
+        <button
+          onClick={onExport}
+          style={{
+            background: '#f1f5f9',
+            border: '1px solid #e2e8f0',
+            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+            color: '#475569',
+            transition: 'all 0.15s',
+          }}
+          title={`Download ${title} report as CSV`}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#0f172a'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#475569'; }}
+        >
+          📥
+        </button>
+      )}
     </div>
     {children}
   </div>
 );
 
 // ─── Main page ────────────────────────────────────────────────────────────────
-import { exportReportToExcel, exportReportToCSV } from '../../utils/excelExportUtil';
-
-// ... existing code snippet header ...
 export default function BusinessDashboardPage() {
   const [range, setRange] = useState('1m');
   const [startDate, setStartDate] = useState('');
@@ -521,7 +545,11 @@ export default function BusinessDashboardPage() {
 
           {/* ── Revenue Trend + Order Status ── */}
           <div className="bd-grid-3-1">
-            <Section title="Revenue Trend" icon="📈">
+            <Section 
+              title="Revenue Trend" 
+              icon="📈" 
+              onExport={() => exportSingleReportToCSV("Revenue_Trend", revenueTrend.map(r => ({ Date: r.date, "Revenue ($)": r.revenue, "Orders Count": r.orders, "AOV ($)": r.aov })))}
+            >
               {revenueTrend.every((d) => d.revenue === 0) ? (
                 <div className="bd-empty">No revenue data for this period.</div>
               ) : (
@@ -539,7 +567,11 @@ export default function BusinessDashboardPage() {
               )}
             </Section>
 
-            <Section title="Order Status" icon="🔄">
+            <Section 
+              title="Order Status" 
+              icon="🔄" 
+              onExport={() => exportSingleReportToCSV("Order_Status", statusData.map(s => ({ Status: s.name, Count: s.value, "Percentage (%)": `${s.pct?.toFixed(1)}%` })))}
+            >
               {statusData.length === 0 ? (
                 <div className="bd-empty">No order data.</div>
               ) : (
@@ -572,7 +604,11 @@ export default function BusinessDashboardPage() {
 
           {/* ── Top Items + Top Categories ── */}
           <div className="bd-grid-2">
-            <Section title="Top Selling Items" icon="🏆">
+            <Section 
+              title="Top Selling Items" 
+              icon="🏆" 
+              onExport={() => exportSingleReportToCSV("Top_Selling_Items", topItems.map(i => ({ Rank: i.rank, Item: i.label, "Revenue ($)": i.total_revenue, "Share (%)": `${i.revenue_share_pct?.toFixed(1)}%` })))}
+            >
               {topItems.length === 0 ? (
                 <div className="bd-empty">No item data.</div>
               ) : (
@@ -607,7 +643,11 @@ export default function BusinessDashboardPage() {
               )}
             </Section>
 
-            <Section title="Least Selling Items" icon="📉">
+            <Section 
+              title="Least Selling Items" 
+              icon="📉" 
+              onExport={() => exportSingleReportToCSV("Least_Selling_Items", leastItems.map(i => ({ Rank: i.rank, Item: i.label, "Revenue ($)": i.total_revenue, "Share (%)": `${i.revenue_share_pct?.toFixed(2)}%` })))}
+            >
               {leastItems.length === 0 ? (
                 <div className="bd-empty">No data.</div>
               ) : (
@@ -629,7 +669,12 @@ export default function BusinessDashboardPage() {
           </div>
 
           {/* ── Top Categories ── */}
-          <Section title="Revenue by Category" icon="📁" className="bd-mb">
+          <Section 
+            title="Revenue by Category" 
+            icon="📁" 
+            className="bd-mb" 
+            onExport={() => exportSingleReportToCSV("Revenue_By_Category", topCategories.map(c => ({ Category: c.name, "Quantity Sold": c.qty, "Revenue ($)": c.value })))}
+          >
               {topCategories.length === 0 ? (
                 <div className="bd-empty">No category data.</div>
               ) : (
@@ -664,7 +709,11 @@ export default function BusinessDashboardPage() {
 
           {/* ── Peak Hours + Cash Flow + Customer Behavior ── */}
           <div className="bd-grid-3">
-            <Section title="Peak Hours" icon="⏰">
+            <Section 
+              title="Peak Hours" 
+              icon="⏰" 
+              onExport={() => exportSingleReportToCSV("Peak_Hours", peakHours.map(p => ({ Hour: p.hour, "Revenue ($)": p.revenue, "Orders Count": p.orders })))}
+            >
               {peakHours.length === 0 ? (
                 <div className="bd-empty">No peak hour data.</div>
               ) : (
@@ -682,7 +731,16 @@ export default function BusinessDashboardPage() {
               )}
             </Section>
 
-            <Section title="Cash Flow" icon="💵">
+            <Section 
+              title="Cash Flow" 
+              icon="💵" 
+              onExport={() => exportSingleReportToCSV("Cash_Flow", [
+                { Metric: 'Income', "Amount ($)": cashFlowSummary?.income ?? 0 },
+                { Metric: 'Expense', "Amount ($)": cashFlowSummary?.expense ?? 0 },
+                { Metric: 'Net Cash Flow', "Amount ($)": cashFlowSummary?.net_cash_flow ?? 0 },
+                ...cashFlowCategories.map(c => ({ Metric: `Category: ${c.name}`, "Amount ($)": c.value }))
+              ])}
+            >
               {cashFlowSummary ? (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
@@ -719,7 +777,19 @@ export default function BusinessDashboardPage() {
               )}
             </Section>
 
-            <Section title="Customer Behavior" icon="👥">
+            <Section 
+              title="Customer Behavior" 
+              icon="👥" 
+              onExport={() => exportSingleReportToCSV("Customer_Behavior", [
+                { Metric: 'Total Customer Orders', Value: customerBehavior?.customer_orders ?? 0 },
+                { Metric: 'Guest Orders', Value: customerBehavior?.guest_orders ?? 0 },
+                { Metric: 'Unique Customers', Value: customerBehavior?.unique_customers ?? 0 },
+                { Metric: 'Repeat Customers', Value: customerBehavior?.repeat_customers ?? 0 },
+                { Metric: 'Repeat Orders', Value: customerBehavior?.repeat_orders ?? 0 },
+                { Metric: 'Avg Orders / Customer', Value: customerBehavior?.avg_orders_per_customer ?? 0 },
+                { Metric: 'Repeat Customer Rate (%)', Value: `${customerBehavior?.repeat_customer_rate_pct?.toFixed(1)}%` },
+              ])}
+            >
               {customerBehavior ? (
                 <>
                   {customerChartData.length > 0 && (
@@ -757,7 +827,12 @@ export default function BusinessDashboardPage() {
           </div>
 
           {/* ── Revenue Orders Count bar chart ── */}
-          <Section title="Daily Order Count" icon="📅" className="bd-mb">
+          <Section 
+            title="Daily Order Count" 
+            icon="📅" 
+            className="bd-mb" 
+            onExport={() => exportSingleReportToCSV("Daily_Order_Count", revenueTrend.map(r => ({ Date: r.date, "Orders Count": r.orders, "Revenue ($)": r.revenue })))}
+          >
             {revenueTrend.every((d) => d.orders === 0) ? (
               <div className="bd-empty">No order count data for this period.</div>
             ) : (

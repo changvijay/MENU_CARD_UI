@@ -123,18 +123,18 @@ export const exportReportToCSV = (data, reportType = 'summary') => {
 
   if (reportType === 'trend' && data.revenue_trend) {
     sheetData = data.revenue_trend.map((row) => ({
-      Period: row.period,
+      Period: row.period || row.date,
       Revenue: row.revenue,
-      OrderCount: row.order_count,
+      OrderCount: row.order_count || row.orders,
       AOV: row.aov,
     }));
-  } else if (reportType === 'items' && data.top_items?.top_selling) {
-    sheetData = data.top_items.top_selling.map((item, i) => ({
+  } else if (reportType === 'items' && (data.top_items?.top_selling || data.top_selling_items)) {
+    const list = data.top_items?.top_selling || data.top_selling_items || [];
+    sheetData = list.map((item, i) => ({
       Rank: i + 1,
-      ItemID: item.food_item_id,
-      ItemName: item.food_name || `Item #${item.food_item_id}`,
-      QuantitySold: item.total_qty,
-      Revenue: item.total_revenue,
+      ItemName: item.food_name || item.name || `Item #${item.food_item_id}`,
+      QuantitySold: item.total_qty || item.quantity,
+      Revenue: item.total_revenue || item.total_sales,
       RevenueSharePct: item.revenue_share_pct,
     }));
   } else {
@@ -149,6 +149,24 @@ export const exportReportToCSV = (data, reportType = 'summary') => {
   }
 
   const worksheet = XLSX.utils.json_to_sheet(sheetData);
+  const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
+
+  const blob = new Blob([csvOutput], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+export const exportSingleReportToCSV = (title, reportData) => {
+  if (!reportData || !reportData.length) return;
+
+  const sanitizedTitle = title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+  const filename = `${sanitizedTitle}_${new Date().toISOString().slice(0, 10)}.csv`;
+
+  const worksheet = XLSX.utils.json_to_sheet(reportData);
   const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
 
   const blob = new Blob([csvOutput], { type: 'text/csv;charset=utf-8;' });
