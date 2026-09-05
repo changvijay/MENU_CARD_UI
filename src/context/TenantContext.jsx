@@ -7,7 +7,7 @@ export const useTenant = () => useContext(TenantContext);
 
 export const TenantProvider = ({ children }) => {
   const defaultTenant = {
-    id: 1,
+    id: 4,
     businessName: 'Chai Sutta Bar',
     primaryColor: '#C07A2E',
   };
