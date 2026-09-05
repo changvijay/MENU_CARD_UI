@@ -65,8 +65,7 @@ export const AuthProvider = ({ children }) => {
 
   // Step 1: Save current path in sessionStorage → redirect to ASP.NET backend → backend redirects to Auth0
   //         Pass this UI's callback URL so the shared backend knows where to redirect after Auth0 login
-  const login = () => {
-    const tenantId = tenant?.id;
+  const login = (tenantId = tenant?.id || 4) => {
     if (!tenantId) {
       console.error("Tenant ID is missing");
       return;

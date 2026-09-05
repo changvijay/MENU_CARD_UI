@@ -118,7 +118,7 @@ const Navbar = () => {
               </>
             )}
 
-            {user && user.role === "admin" && (
+            {user && (user.role || '').toLowerCase() === "admin" && (
               <Link to="/admin" className={navLinkClass('/admin')}>Admin</Link>
             )}
 
@@ -167,7 +167,7 @@ const Navbar = () => {
               <Link to="/orders" onClick={() => setMobileOpen(false)} className={`block py-2 px-3 rounded-xl ${isActive('/orders') ? 'bg-primary-50 text-primary-600 font-medium' : 'text-gray-600 hover:bg-white/40'}`}>Orders</Link>
             )}
 
-            {user && user.role === "admin" && (
+            {user && (user.role || '').toLowerCase() === "admin" && (
               <Link to="/admin" onClick={() => setMobileOpen(false)} className={`block py-2 px-3 rounded-xl ${isActive('/admin') ? 'bg-primary-50 text-primary-600 font-medium' : 'text-gray-600 hover:bg-white/40'}`}>Admin</Link>
             )}
           </div>

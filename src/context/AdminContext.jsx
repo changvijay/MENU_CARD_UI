@@ -17,7 +17,7 @@ export const AdminProvider = ({ children }) => {
 
   // Get user role from authenticated user object
   // Default to 'viewer' if no role is defined
-  const userRole = user?.role || ROLES.VIEWER;
+  const userRole = (user?.role || ROLES.VIEWER).toLowerCase();
 
   // Check if user has a specific role
   const hasRole = (role) => {
