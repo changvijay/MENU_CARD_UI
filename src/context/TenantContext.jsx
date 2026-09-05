@@ -30,7 +30,16 @@ export const TenantProvider = ({ children }) => {
           parts.length <= 2;
 
         if (isMainOrGeneric) {
-          setTenant(defaultTenant);
+          const fallbackRes = await axios.get(`https://menu-card-api-yvzycdnaqq-el.a.run.app/api/tenant/info?id=4`);
+          if (fallbackRes.data && fallbackRes.data.success && fallbackRes.data.data) {
+            setTenant(fallbackRes.data.data);
+            if (fallbackRes.data.data.primaryColor) {
+              document.documentElement.style.setProperty('--primary-color', fallbackRes.data.data.primaryColor);
+              document.title = fallbackRes.data.data.businessName || 'Chai Sutta Bar';
+            }
+          } else {
+            setTenant(defaultTenant);
+          }
           setLoading(false);
           return;
         }
