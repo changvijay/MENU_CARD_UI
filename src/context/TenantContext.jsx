@@ -6,42 +6,39 @@ const TenantContext = createContext();
 export const useTenant = () => useContext(TenantContext);
 
 export const TenantProvider = ({ children }) => {
-  const [tenant, setTenant] = useState(null);
+  const defaultTenant = {
+    id: 1,
+    businessName: 'Chai Sutta Bar',
+    primaryColor: '#C07A2E',
+  };
+
+  const [tenant, setTenant] = useState(defaultTenant);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchTenantConfig = async () => {
       try {
-        // Get the current hostname (e.g., tenanta.ordernow.com or tenanta.localhost)
         const hostname = window.location.hostname;
-        
-        // Extract subdomain
         const subdomain = hostname.split('.')[0];
-        
-        // Optional: Default to a specific subdomain for local dev if needed
-        // const actualSubdomain = hostname === 'localhost' ? 'default' : subdomain;
         
         const response = await axios.get(`https://menu-card-api-yvzycdnaqq-el.a.run.app/api/tenant/info?subdomain=${subdomain}`);
         
-        if (response.data.success) {
+        if (response.data && response.data.success && response.data.data) {
           setTenant(response.data.data);
           
-          // Apply dynamic branding to CSS variables
           if (response.data.data.primaryColor) {
             document.documentElement.style.setProperty('--primary-color', response.data.data.primaryColor);
-            // We could also dynamically set title and favicon
-            document.title = response.data.data.businessName || 'Order Now';
+            document.title = response.data.data.businessName || 'Chai Sutta Bar';
           }
         } else {
-          setError(response.data.message || 'Tenant not found');
+          // Fallback to default Chai Sutta Bar tenant
+          console.warn('Tenant API response unsuccessful, using default Chai Sutta Bar config:', response.data?.message);
+          setTenant(defaultTenant);
         }
       } catch (err) {
-        if (err.response && err.response.status === 404) {
-          setError('Tenant not found. Please check the URL.');
-        } else {
-          setError('An error occurred while loading the application.');
-        }
+        console.warn('Tenant lookup error, defaulting to Chai Sutta Bar:', err);
+        setTenant(defaultTenant);
       } finally {
         setLoading(false);
       }
