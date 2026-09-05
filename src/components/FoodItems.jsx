@@ -5,6 +5,8 @@ import { useCart } from '../context/CartContext';
 import { foodItemsApi, categoriesApi, transformFoodItem, transformCategory } from '../services/apiService';
 import FoodItemCard from './FoodItemCard';
 
+import { useTenant } from '../context/TenantContext';
+
 /* ─── Inline design tokens (no Tailwind overrides needed) ─── */
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
@@ -333,7 +335,8 @@ const FILTER_CHIPS = [
 ];
 
 const FoodItems = () => {
-  const { token } = useAuth();
+  const { token, login } = useAuth();
+  const { tenant } = useTenant();
   const { itemCount, finalAmount } = useCart();
   const navigate = useNavigate();
   
@@ -408,7 +411,10 @@ const FoodItems = () => {
     if (searchRef.current) searchRef.current.value = '';
   };
   const activeFilterCount = Object.values(filters).filter(val => val && val !== null).length;
-  const sortLabel = SORT_OPTIONS.find(o => o.value === sortBy)?.label;
+  const isAuthError = error === 'No authentication token found. Please log in.';
+  const displayErrorMessage = isAuthError
+    ? 'Please sign in to view our full menu and continue with your order.'
+    : error;
 
   /* ── Loading ── */
   if (loading) return (
@@ -440,12 +446,19 @@ const FoodItems = () => {
   if (error) return (
     <div className="fi-root">
       <style>{css}</style>
-      <div className="fi-page" style={{ display:'flex', justifyContent:'center', paddingTop: 80 }}>
+      <div className="fi-page fi-error-shell" style={{ display:'flex', justifyContent:'center', paddingTop: 80 }}>
         <div className="fi-error">
-          <div className="fi-error-icon">⚠️</div>
-          <div className="fi-error-title">Couldn&apos;t load menu</div>
-          <div className="fi-error-msg">{error}</div>
-          <button className="fi-retry" onClick={fetchData}>Try Again</button>
+          <div className="fi-error-icon">{isAuthError ? '🍽️' : '⚠️'}</div>
+          <div className="fi-error-title">
+            {isAuthError ? 'Sign in to browse the menu' : 'Couldn\'t load menu'}
+          </div>
+          <div className="fi-error-msg">{displayErrorMessage}</div>
+          <div className="fi-error-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            {isAuthError && (
+              <button className="fi-retry" style={{ background: 'var(--brand)', color: '#fff' }} onClick={() => login(tenant?.id || 4)}>Log in</button>
+            )}
+            <button className="fi-retry" onClick={fetchData}>Try Again</button>
+          </div>
         </div>
       </div>
     </div>
